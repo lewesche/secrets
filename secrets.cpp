@@ -1,0 +1,295 @@
+#include <iostream>
+#include <string>
+#include <fstream>
+#include <sstream>
+
+using namespace std;
+
+string op(const string& pass, const string& master, int multiplier) {
+	size_t i=0;
+	size_t j=0;
+	bool seen_full_pass = false;
+	bool seen_full_master = false;
+	string res = pass;
+
+	while(!seen_full_pass || !seen_full_master) {
+		if(j>=master.size()) {
+			j=0;
+			seen_full_master = true;
+		}
+		if(i>=pass.size()) {
+			i=0;
+			seen_full_pass = true;
+		}
+
+		res[i] = res[i] + master[j]*multiplier; 
+		++j;
+		++i;
+	}
+
+	cout << res.length() << endl;
+	for(size_t i=0; i<res.length(); i++)
+		cout << (int) res[i] + 128 << endl;
+
+	return res;
+}
+
+string encrypt(const string& pass, const string& master) {
+	return op(pass, master, 5*master.size());
+}
+
+string decrypt(const string& pass, const string& master) {
+	return op(pass, master, -5*master.size());
+}
+
+char hex_2_char(char hex) {
+	switch(hex) {
+		case '0':
+			return 0;
+		case '1':
+			return 1;
+		case '2':
+			return 2;
+		case '3':
+			return 3;
+		case '4':
+			return 4;
+		case '5':
+			return 5;
+		case '6':
+			return 6;
+		case '7':
+			return 7;
+		case '8':
+			return 8;
+		case '9':
+			return 9;
+		case 'a':
+			return 10;
+		case 'b':
+			return 11;
+		case 'c':
+			return 12;
+		case 'd':
+			return 13;
+		case 'e':
+			return 14;
+		case 'f':
+			return 15;
+		default: 
+			throw -1;
+		}
+}
+
+string hexstr_2_charstr(const string& enc) {
+	string res;
+	for(size_t i=0; i<enc.length(); i+=2) {
+		char c=0;
+		c += 16*hex_2_char(enc[i]);
+		c += hex_2_char(enc[i+1]);	
+		res += c;
+	}
+	return res;
+}
+
+void read_secrets(const string& fname, const string& target_tag, const int target_idx) {
+	cout << "  enter master password to decrypt with: "; 
+	string master;
+	getline(cin, master); 
+
+	ifstream file(fname);
+	if(!file) {
+		cerr << "  Could not open file" << endl;
+	}
+
+	size_t i=0;
+	while(!file.eof()) {
+		string tag;
+		getline(file, tag);
+		string enc;
+		getline(file, enc);
+		if(!enc.empty()) {
+			//enc = hexstr_2_charstr(enc);
+			cout << "AFTER CONVERT:" <<  enc << endl;
+			if((target_tag.empty() && target_idx==-1) || (!target_tag.empty() && target_tag==tag) || target_idx==i) {
+				string dec = decrypt(enc, master);
+				cout << "  " << i << '\t' << tag << endl;
+				cout << "   " << '\t' << dec << endl;
+			}
+			++i;
+		}
+	}
+	cout << endl;
+	file.close();
+}
+
+void write_as_hex(ofstream& file, const string& enc) {
+	for(size_t i=0; i<enc.length(); ++i) {
+		int c = (int)enc[i];
+		if(c<16) {
+			file << '0' << std::hex << c;
+		} else {
+			file << hex << c;
+		}
+	}	
+	file << endl;
+}
+
+void write_secrets(const string& fname) {
+	ofstream file(fname, std::ios::app);
+	if(!file) {
+		cerr << "Could not open file" << endl;
+	}
+
+	cout << "  enter a key to encrypt with: "; 
+	string master; 
+	getline(cin, master); 
+
+	cout << "  enter phrase to encrypt: "; 
+	string pass; 
+	getline(cin, pass); 
+
+	cout << "  optionally, enter a non-integer tag: "; 
+	string tag; 
+	getline(cin, tag); 
+
+	if(pass.empty()) {
+		cerr << "Can't write - phrase is empty" << endl << endl;
+	} else {
+		string enc = encrypt(pass, master);
+		cout << "  writing tag " << tag << " and encrpyted phrase: " << enc <<  endl << endl; 	
+		file << tag << endl;
+		file << enc << endl;
+		//write_as_hex(file, enc);
+	}
+	file.close();
+}
+
+void delete_secrets(const string& fname, const string& target_tag, const int target_idx) {
+	ifstream file(fname);
+	if(!file) {
+		cerr << "  Could not open file" << endl;
+	}
+
+	string fname_temp = fname + ".tmp";
+	ofstream temp;
+	temp.open(fname_temp, ofstream::out);
+
+	size_t i=0;
+	while(!file.eof()) {
+		string tag;
+		getline(file, tag);
+		string enc;
+		getline(file, enc);
+		if(!enc.empty()) {
+			if((!target_tag.empty() && target_tag==tag) || target_idx==i) {
+				++i;
+				continue;
+			}
+			temp << tag << endl;
+			temp << enc << endl;
+			++i;
+		}
+	}
+	cout << endl;
+
+	file.close();
+	temp.close();
+	remove(fname.c_str());
+	rename(fname_temp.c_str(), fname.c_str());
+}
+
+void print_help() {
+	cout << "  h \t show all commands" << endl;
+	cout << "  r \t read all secrets" << endl;
+	cout << "  w \t write new secret" << endl;
+	cout << "  f \t find and read secret(s) by tag or index" << endl << "    \t   indicies are integers, tags are not" << endl;
+	cout << "  x \t delete secret(s) by tag or index" << endl << "    \t   does nothing if no matches are found" << endl;
+	cout << "  p \t use new path to secrets file" << endl << "    \t   creates a new file if the file is not found" << endl;
+	cout << "  q \t quit" << endl << endl;
+}
+
+void print_intro() {
+	cout << "    ~~~~~ secrets ~~~~~" << endl;
+	cout << "  'h' to see all commands" <<  endl << endl;
+}
+
+void test_path(string fname) {
+	ifstream ifile(fname);
+	if(!ifile){
+		cout << "  Couldn't find " << fname << ", creating file." << endl << endl;
+		ofstream ofile(fname);
+	} else {
+		ifile.close();
+	}
+}
+
+bool is_int(string str) {
+	if(str.empty())
+		return false;
+	for(size_t i=0; i<str.length(); i++) {
+		if(!isdigit(str[i]))
+			return false;
+	}
+	return true;
+}
+
+void get_targets(string& target_tag, int& target_idx) {
+	cout << "  enter tag/index: ";
+	getline(cin, target_tag);
+	if(is_int(target_tag)) {
+		target_idx = stoi(target_tag);
+		target_tag = "";
+	} else {
+		target_idx = -1;
+	}
+}
+
+int main() {
+	print_intro();
+	string homepath = getenv("HOME");
+	string fname(homepath + "/.secret.txt");
+	test_path(fname);
+
+	while(1) {
+		string target_tag; // c++ didn't like this in the switch statement
+		int target_idx=-1; 
+		cout << "  enter command (r/w/f/x/p/q/h): ";
+		char select;
+		cin >> select;
+		string trash;
+		getline(cin, trash);
+
+		// In case user entered more than 1 char
+		cin.clear();
+		fflush(stdin);
+
+		switch(select) {
+			case 'h':
+				print_help();
+				break;
+			case 'r':
+				read_secrets(fname, "", -1);
+				break;
+			case 'w':
+				write_secrets(fname);
+				break;
+			case 'f':
+				get_targets(target_tag, target_idx);
+				read_secrets(fname, target_tag, target_idx);
+				break;
+			case 'x':
+				get_targets(target_tag, target_idx);
+				delete_secrets(fname, target_tag, target_idx);
+				break;
+			case 'p':
+				cout << "  enter filename/path: ";
+				getline(cin, fname);
+				test_path(fname);
+				break;
+			case 'q':
+				return 0;
+		}
+	}
+}
+
