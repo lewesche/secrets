@@ -27,10 +27,6 @@ string op(const string& pass, const string& master, int multiplier) {
 		++i;
 	}
 
-	cout << res.length() << endl;
-	for(size_t i=0; i<res.length(); i++)
-		cout << (int) res[i] + 128 << endl;
-
 	return res;
 }
 
@@ -42,51 +38,14 @@ string decrypt(const string& pass, const string& master) {
 	return op(pass, master, -5*master.size());
 }
 
-char hex_2_char(char hex) {
-	switch(hex) {
-		case '0':
-			return 0;
-		case '1':
-			return 1;
-		case '2':
-			return 2;
-		case '3':
-			return 3;
-		case '4':
-			return 4;
-		case '5':
-			return 5;
-		case '6':
-			return 6;
-		case '7':
-			return 7;
-		case '8':
-			return 8;
-		case '9':
-			return 9;
-		case 'a':
-			return 10;
-		case 'b':
-			return 11;
-		case 'c':
-			return 12;
-		case 'd':
-			return 13;
-		case 'e':
-			return 14;
-		case 'f':
-			return 15;
-		default: 
-			throw -1;
-		}
-}
-
-string hexstr_2_charstr(const string& enc) {
+string numstr_2_charstr(const string& enc) {
 	string res;
-	for(size_t i=0; i<enc.length(); i+=2) {
-		char c=0;
-		c += 16*hex_2_char(enc[i]);
-		c += hex_2_char(enc[i+1]);	
+	for(size_t i=0; i<enc.length(); i+=3) {
+		string substr;
+		substr += enc[i];
+		substr += enc[i+1];
+		substr += enc[i+2];
+		char c = stoi(substr);	
 		res += c;
 	}
 	return res;
@@ -109,8 +68,7 @@ void read_secrets(const string& fname, const string& target_tag, const int targe
 		string enc;
 		getline(file, enc);
 		if(!enc.empty()) {
-			//enc = hexstr_2_charstr(enc);
-			cout << "AFTER CONVERT:" <<  enc << endl;
+			enc = numstr_2_charstr(enc);
 			if((target_tag.empty() && target_idx==-1) || (!target_tag.empty() && target_tag==tag) || target_idx==i) {
 				string dec = decrypt(enc, master);
 				cout << "  " << i << '\t' << tag << endl;
@@ -123,15 +81,17 @@ void read_secrets(const string& fname, const string& target_tag, const int targe
 	file.close();
 }
 
-void write_as_hex(ofstream& file, const string& enc) {
+void write_as_nums(ofstream& file, const string& enc) {
 	for(size_t i=0; i<enc.length(); ++i) {
-		int c = (int)enc[i];
-		if(c<16) {
-			file << '0' << std::hex << c;
+		unsigned char c = enc[i];
+		if(c<10) {
+			file << "00" << +c;
+		} else if(c<100) {
+			file << "0" << +c;
 		} else {
-			file << hex << c;
+			file << +c;
 		}
-	}	
+	}
 	file << endl;
 }
 
@@ -159,8 +119,7 @@ void write_secrets(const string& fname) {
 		string enc = encrypt(pass, master);
 		cout << "  writing tag " << tag << " and encrpyted phrase: " << enc <<  endl << endl; 	
 		file << tag << endl;
-		file << enc << endl;
-		//write_as_hex(file, enc);
+		write_as_nums(file, enc);
 	}
 	file.close();
 }
