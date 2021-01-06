@@ -1,7 +1,6 @@
 #include <iostream>
 #include <string>
 #include <fstream>
-#include <sstream>
 
 using namespace std;
 
@@ -52,7 +51,7 @@ string numstr_2_charstr(const string& enc) {
 }
 
 void read_secrets(const string& fname, const string& target_tag, const int target_idx) {
-	cout << "  enter master password to decrypt with: "; 
+	cout << "  enter a key: "; 
 	string master;
 	getline(cin, master); 
 
@@ -101,7 +100,7 @@ void write_secrets(const string& fname) {
 		cerr << "Could not open file" << endl;
 	}
 
-	cout << "  enter a key to encrypt with: "; 
+	cout << "  enter a key: "; 
 	string master; 
 	getline(cin, master); 
 
@@ -117,9 +116,9 @@ void write_secrets(const string& fname) {
 		cerr << "Can't write - phrase is empty" << endl << endl;
 	} else {
 		string enc = encrypt(pass, master);
-		cout << "  writing tag " << tag << " and encrpyted phrase: " << enc <<  endl << endl; 	
 		file << tag << endl;
 		write_as_nums(file, enc);
+		cout << "  Done" << endl << endl;
 	}
 	file.close();
 }
@@ -127,7 +126,7 @@ void write_secrets(const string& fname) {
 void delete_secrets(const string& fname, const string& target_tag, const int target_idx) {
 	ifstream file(fname);
 	if(!file) {
-		cerr << "  Could not open file" << endl;
+		cerr << "  Could not open file" << endl << endl;
 	}
 
 	string fname_temp = fname + ".tmp";
@@ -150,12 +149,12 @@ void delete_secrets(const string& fname, const string& target_tag, const int tar
 			++i;
 		}
 	}
-	cout << endl;
 
 	file.close();
 	temp.close();
 	remove(fname.c_str());
 	rename(fname_temp.c_str(), fname.c_str());
+	cout << "  Done" << endl << endl;
 }
 
 void print_help() {
@@ -163,7 +162,7 @@ void print_help() {
 	cout << "  r \t read all secrets" << endl;
 	cout << "  w \t write new secret" << endl;
 	cout << "  f \t find and read secret(s) by tag or index" << endl << "    \t   indicies are integers, tags are not" << endl;
-	cout << "  x \t delete secret(s) by tag or index" << endl << "    \t   does nothing if no matches are found" << endl;
+	cout << "  d \t delete secret(s) by tag or index" << endl << "    \t   does nothing if no matches are found" << endl;
 	cout << "  p \t use new path to secrets file" << endl << "    \t   creates a new file if the file is not found" << endl;
 	cout << "  q \t quit" << endl << endl;
 }
@@ -237,7 +236,7 @@ int main() {
 				get_targets(target_tag, target_idx);
 				read_secrets(fname, target_tag, target_idx);
 				break;
-			case 'x':
+			case 'd':
 				get_targets(target_tag, target_idx);
 				delete_secrets(fname, target_tag, target_idx);
 				break;
