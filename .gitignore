@@ -30,3 +30,11 @@
 *.exe
 *.out
 *.app
+
+# Stuff my mac generates
+.DS_Store
+*.DS_Store
+*.dSYM
+
+# vim
+*.swp
