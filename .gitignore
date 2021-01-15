@@ -35,6 +35,7 @@
 .DS_Store
 *.DS_Store
 *.dSYM
+bin
 
 # vim
 *.swp

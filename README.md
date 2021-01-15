@@ -11,7 +11,7 @@ Setup might look something like:
 git clone ...
 cd secrets
 make
-cp secrets /usr/local/bin
+cp bin/secrets /usr/local/bin
 ```
 Then run from anywhere with `secrets`
 
@@ -22,7 +22,7 @@ Then run from anywhere with `secrets`
 - The index and tag are displayed first, and followed by the decrypted secret on the next line. 
 - Ex:
 ```
-enter command (r/w/f/x/p/q/h): r
+enter command (r/w/f/l/d/p/q/h): r
 enter a key: password123
 0     My netflix password
       netflix_passwrd
@@ -34,7 +34,7 @@ enter a key: password123
 - You'll be prompted for a key, the secret you want to save, and optionally a tag. 
 - Ex:
 ```
-enter command (r/w/f/x/p/q/h): w 
+enter command (r/w/f/l/d/p/q/h): w 
 enter a key: key123 
 enter phrase to encrypt: my_netflix_password
 optionally, enter a non-integer tag: netflix
@@ -44,12 +44,14 @@ optionally, enter a non-integer tag: netflix
 - Tags are anything that isn't an integer. 
 - Ex:
 ```
-enter command (r/w/f/x/p/q/h): f 
+enter command (r/w/f/l/d/p/q/h): f 
 enter tag/index: top secret
 enter a key: myKey
 1     top secret
       roblox_password
 ```
+###   l : list all secrets by index/tag
+- Does not decrypt anything.
 ###   d : delete secret(s) by tag or index
 - Does nothing if no matches are found.
 ###   p : use new path to secrets file
