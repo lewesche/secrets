@@ -4,7 +4,15 @@ Simple tool for storing passwords or anything else you'd like to encrypt.
 No "master password" data is ever stored. When you want to store a new "secret", you provide a key that is used to encrypt the secret phrase. When you want to read back a secret, provide the same key to decript it. 
 
 ## Installation
-Build the executable with "make", and move the executable to somewhere on the $PATH. The first time it's run a file will be created in your home directory called `.secrets.txt`. This is where encrypted text and optionally unencrypted tags are stored. It might be a good idea to save a backup copy of this file. 
+
+### With Homebrew
+```
+brew tap lewesche/secrets
+brew install secrets
+```
+
+### Build yourself
+Clone this repo, build the executable with "make", and move the executable to somewhere on the $PATH. 
 
 Setup might look something like:
 ```
@@ -16,6 +24,8 @@ cp bin/secrets /usr/local/bin
 Then run from anywhere with `secrets`
 
 ## Usage
+The first time it's run a file will be created in your home directory called `.secrets.txt`. This is where encrypted text and optionally unencrypted tags are stored. It might be a good idea to save a backup copy of this file. 
+
 ### + h : show all commands
 ### + r : read all secrets
 - Use the same key to read everything. If you use different keys for different secrets, some will return gibberish. 
