@@ -18,6 +18,9 @@ void read_secrets(const string& fname, const string& target_tag, const int targe
 		return;
 	}
 
+	cout << "  " << "idx" << '\t' << "tag" << endl;
+	cout << "    " << '\t' << "seceret" << endl;
+
 	size_t i=0;
 	while(!file.eof()) {
 		string tag;
@@ -33,7 +36,7 @@ void read_secrets(const string& fname, const string& target_tag, const int targe
 				s.set_enc(enc);
 				s.decrypt();
 				cout << "  " << i << '\t' << tag << endl;
-				cout << "   " << '\t' << s.get_dec() << endl;
+				cout << "    " << '\t' << s.get_dec() << endl;
 			}
 			++i;
 		}
@@ -82,6 +85,8 @@ void list_secrets(const string& fname) {
 		cerr << "  Could not open file" << endl << endl;
 		return;
 	}
+
+	cout << "  " << "idx" << '\t' << "tag" << endl;
 
 	size_t i=0;
 	while(!file.eof()) {
