@@ -26,8 +26,8 @@ Then run from anywhere with `secrets`
 ## Usage
 The first time it's run a file will be created in your home directory called `.secrets.txt`. This is where encrypted text and optionally unencrypted tags are stored. It might be a good idea to save a backup copy of this file. 
 
-### + h : show all commands
-### + r : read all secrets
+### h : show all commands
+### r : read all secrets
 - Use the same key to read everything. If you use different keys for different secrets, some will return gibberish. 
 - The index and tag are displayed first, and followed by the decrypted secret on the next line. 
 - Ex:
@@ -40,7 +40,7 @@ enter a key: password123
       ??D?G??#8뚀
 ```
 
-### + w : write new secret
+### w : write new secret
 - You'll be prompted for a key, the secret you want to save, and optionally a tag. 
 - Ex:
 ```
