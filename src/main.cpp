@@ -193,7 +193,7 @@ int main(int argc, char **argv) {
 
 	print_intro();
 	string homepath = getenv("HOME");
-	string fname(homepath + "/.secret.txt");
+	string fname(homepath + "/.secrets.txt");
 	test_path(fname);
 
 	while(1) {
