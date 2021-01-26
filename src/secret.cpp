@@ -2,6 +2,7 @@
 #include <string>
 #include <fstream>
 #include "secret.h"
+#include <math.h>
 
 using namespace std;
 
@@ -32,28 +33,41 @@ const string& secret::get_key() const {
 
 
 string secret::shift(const string& phrase, int multiplier) const {
-	size_t i=0;
-	size_t j=0;
-	bool seen_full_phrase = false;
-	bool seen_full_key = false;
-	string res = phrase;
-
 	// The multiplier input is pretty much arbitrary as long as 
 	// the abs value of the multipliers used for encryption and
 	// decryption match, and they are opposite signs. 
 	//
 	// But for some bonus security lets factor in the key size
-	multiplier *= key.size();
+	multiplier *= key.size()+1;
+
+	// And the sum of all key chars
+	multiplier *= strsum(key)+1;
+
+	// Some complicated math to figure out the num passes
+	size_t min_phrase_passes = (key.size() + static_cast<size_t>(pow(static_cast<double>(strsum(key)), static_cast<double>(key.size())))) % MAX_PASSES;
+	size_t min_key_passes = MAX_PASSES - min_phrase_passes; // If the above line returns a low num, this function will ensure plenty of passes. 
+
+	size_t phrase_pass_count = 0, key_pass_count = 0;
+
+	size_t i=0;
+	size_t j=0;
+	bool done_phrase_passes = false;
+	bool done_key_passes = false;
+	string res = phrase;
 
 	// Make sure to iterate over the both strings entierly
-	while(!seen_full_phrase || !seen_full_key) {
+	while(!done_phrase_passes || !done_key_passes) {
 		if(j>=key.size()) {
 			j=0;
-			seen_full_key = true;
+			++key_pass_count;
+			if(key_pass_count >= min_key_passes)
+				done_key_passes = true;
 		}
 		if(i>=phrase.size()) {
 			i=0;
-			seen_full_phrase = true;
+			++phrase_pass_count;
+			if(phrase_pass_count >= min_phrase_passes)
+				done_phrase_passes = true;
 		}
 
 		res[i] = res[i] + key[j]*multiplier; 
@@ -64,12 +78,20 @@ string secret::shift(const string& phrase, int multiplier) const {
 }
 
 void secret::encrypt() {
-	enc = shift(dec, 5);
+	enc = shift(dec, MULTIPLIER);
 	// enc_nums might be out of date if dec changed, but doesn't matter
 }
 
 void secret::decrypt() {
-	dec = shift(enc, -5);
+	dec = shift(enc, -1*MULTIPLIER);
+}
+
+char secret::strsum(string s) const {
+	char res = 0;
+	for(size_t i=0; i<s.size(); ++i) {
+		res += s[i];
+	}
+	return res;
 }
 
 string secret::numstr_2_charstr(const string& numstr) const {

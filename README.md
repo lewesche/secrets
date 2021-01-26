@@ -23,6 +23,8 @@ cp bin/secrets /usr/local/bin
 ```
 Then run from anywhere with `secrets`
 
+Before compiling with `make`, there are macros you can change within secret.h to modify the encryption/decryption algorithm in your binary. See the file for details. 
+
 ## Usage
 The first time it's run a file will be created in your home directory called `.secrets.txt`. This is where encrypted text and optionally unencrypted tags are stored. It might be a good idea to save a backup copy of this file. 
 

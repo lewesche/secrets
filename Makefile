@@ -3,6 +3,7 @@ CPPFLAGS = -Wall -g -std=c++11
 BIN_DIR = bin
 SRC_DIR = src
 
+
 all: $(BIN_DIR)/.dirstamp $(BIN_DIR)/secrets
 
 $(BIN_DIR)/secret.o: $(SRC_DIR)/secret.cpp $(SRC_DIR)/secret.h

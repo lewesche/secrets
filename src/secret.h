@@ -1,6 +1,19 @@
 #ifndef SECRETS
 #define SECRETS
 
+
+/*  ~~~ WARING ~~~
+	MULTIPLIER and MAX_PASSES are two constants used during encryption/decryption. 
+	
+	They can be changed for extra securty. 
+	Changing either constant before compiling will result in a .secrets.txt file that cannot be read by other binaries compiled with different constants. 
+	MAX_PASSES also effects the speed of the program, larger MAX_PASSES == slower decryption/encryption. 
+*/
+
+#define MULTIPLIER 5
+#define MAX_PASSES 3249
+
+
 class secret {
 private:
 	std::string key;
@@ -31,6 +44,7 @@ public:
 
 private:
 	std::string shift(const std::string& phrase, int multiplier) const;
+	char strsum(std::string s) const;
 
 	// Converts a string of 3-char numbers (0-256) to a string of chars
 	std::string numstr_2_charstr(const std::string& numstr) const;
