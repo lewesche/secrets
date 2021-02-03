@@ -11,8 +11,7 @@
 */
 
 #define MULTIPLIER 5
-#define MAX_PASSES 3249
-
+#define MAX_PASSES 8529
 
 class secret {
 private:
@@ -20,17 +19,28 @@ private:
 	std::string enc_nums; // encrypted text as a string of 3 digit nums, 0-256
 	std::string enc; // in normal char form
 	std::string dec; // decrypted "plain" text
+	std::string fname; // filename for writing
+	std::string tag;
+	size_t idx;
+	int* last_printed; // used to keep print order with lots of threads
 
 public: 
 	// set_enc xpects a string of numbers, where each 3 ranges from 0-256
 	void set_enc(const std::string& e); 
 	void set_dec(const std::string& d);
 	void set_key(const std::string& k);
+	void set_fname(const std::string& f);
+	void set_tag(const std::string& t);
+	void set_idx(size_t i);
+	void set_last_printed(int *addr);
 
 	const std::string& get_enc() const; 
 	const std::string& get_dec() const;
 	const std::string& get_key() const;
-
+	const std::string& get_fname() const;
+	const std::string& get_tag() const;
+	size_t get_idx() const;
+	int* get_last_printed() const;
 
 	void encrypt();
 	void decrypt();
@@ -40,7 +50,7 @@ public:
 	// to handle the case where the encrypted text forms a \n
 	//
 	// Disks are big
-	void write(std::ofstream& file) const;
+	void write() const;
 
 private:
 	std::string shift(const std::string& phrase, int multiplier) const;

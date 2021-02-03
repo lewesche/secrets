@@ -19,6 +19,22 @@ void secret::set_key(const std::string& k) {
 	key = k;
 }
 
+void secret::set_fname(const std::string& f) {
+	fname = f;
+}
+
+void secret::set_tag(const std::string& t) {
+	tag = t;
+}
+
+void secret::set_idx(size_t i) {
+	idx = i;
+}
+
+void secret::set_last_printed(int *addr) {
+	last_printed = addr;
+}
+
 const string& secret::get_enc() const {
 	return enc;
 }
@@ -31,6 +47,21 @@ const string& secret::get_key() const {
 	return key;
 }
 
+const string& secret::get_fname() const {
+	return fname;
+}
+
+const string& secret::get_tag() const {
+	return tag;
+}
+
+size_t secret::get_idx() const {
+	return idx;
+}
+
+int* secret::get_last_printed() const {
+	return last_printed;
+}
 
 string secret::shift(const string& phrase, int multiplier) const {
 	// The multiplier input is pretty much arbitrary as long as 
@@ -44,8 +75,7 @@ string secret::shift(const string& phrase, int multiplier) const {
 	multiplier *= strsum(key)+1;
 
 	// Some complicated math to figure out the num passes
-	size_t min_phrase_passes = (key.size() + static_cast<size_t>(pow(static_cast<double>(strsum(key)), static_cast<double>(key.size())))) % MAX_PASSES;
-	size_t min_key_passes = MAX_PASSES - min_phrase_passes; // If the above line returns a low num, this function will ensure plenty of passes. 
+	size_t min_passes = 1 + static_cast<size_t>((hypot(key.size(), strsum(key)) + (pow(static_cast<double>(strsum(key)), static_cast<double>(key.size()))))) % MAX_PASSES;
 
 	size_t phrase_pass_count = 0, key_pass_count = 0;
 
@@ -60,13 +90,13 @@ string secret::shift(const string& phrase, int multiplier) const {
 		if(j>=key.size()) {
 			j=0;
 			++key_pass_count;
-			if(key_pass_count >= min_key_passes)
+			if(key_pass_count >= min_passes)
 				done_key_passes = true;
 		}
 		if(i>=phrase.size()) {
 			i=0;
 			++phrase_pass_count;
-			if(phrase_pass_count >= min_phrase_passes)
+			if(phrase_pass_count >= min_passes)
 				done_phrase_passes = true;
 		}
 
@@ -107,7 +137,15 @@ string secret::numstr_2_charstr(const string& numstr) const {
 	return charstr;
 }
 
-void secret::write(ofstream& file) const {
+void secret::write() const {
+	ofstream file(fname, std::ios::app);
+    if(!file) {
+        cerr << "Could not open file" << endl;
+        return;
+    }
+
+	file << tag << endl;	
+
 	for(size_t i=0; i<enc.length(); ++i) {
 		unsigned char c = enc[i];
 		if(c<10) {
@@ -119,5 +157,6 @@ void secret::write(ofstream& file) const {
 		}
 	}
 	file << endl;
+	file.close();
 }
 

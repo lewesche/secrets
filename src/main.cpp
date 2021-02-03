@@ -2,8 +2,55 @@
 #include <string>
 #include <fstream>
 #include "secret.h"
+#include <pthread.h>
+#include <unordered_set>
 
 using namespace std;
+
+unordered_set<pthread_t> thds;	// to keep track of threads to join with
+pthread_mutex_t set_lock; 		// to lock the thds set
+pthread_mutex_t file_lock;		// to lock reading/writing to file or cout (when necessary)
+pthread_cond_t cv;				// to ensure threads print out secrets by index order
+
+void wait_for_thds() {
+	pthread_mutex_lock(&set_lock);
+	unordered_set<pthread_t>::iterator it;
+	for(it = thds.begin(); it!=thds.end(); it++) {
+		pthread_join(*it, nullptr);
+	}
+	pthread_mutex_unlock(&set_lock);
+	thds.clear();
+}
+
+// Try and remove thread from the set of threads
+// Can't? No big deal, that means the main thd is already 
+// waiting to join. Erasing would mess up the iterator
+void tryremove() {
+	if(pthread_mutex_trylock(&set_lock)==0) {
+		if(thds.find(pthread_self()) != thds.end())
+			thds.erase(pthread_self());
+		pthread_mutex_unlock(&set_lock);
+	}
+}
+
+void* thd_read(void *arg) {
+	secret *s = (secret *)arg;
+	s->decrypt();
+	pthread_mutex_lock(&file_lock);
+	while(*(s->get_last_printed())+1 != s->get_idx()) {
+		pthread_cond_wait(&cv, &file_lock);
+	}
+
+	cout << "  " << s->get_idx() << '\t' << s->get_tag() << endl;
+	cout << "    " << '\t' << s->get_dec() << endl;
+	*(s->get_last_printed()) = s->get_idx();
+	pthread_cond_broadcast(&cv);
+	pthread_mutex_unlock(&file_lock);
+
+	delete s;
+	tryremove();
+	return nullptr;
+}
 
 // Reads secret based on tag or idx
 // Reads all secrets if target_idx = -1 and target_tag is empty
@@ -12,6 +59,10 @@ void read_secrets(const string& fname, const string& target_tag, const int targe
 	string key;
 	getline(cin, key); 
 
+	wait_for_thds();
+
+	// No need to lock here, only main thread will be reading from file
+	// Instead, threads will use the lock to share cout
 	ifstream file(fname);
 	if(!file) {
 		cerr << "  Could not open file" << endl;
@@ -22,36 +73,49 @@ void read_secrets(const string& fname, const string& target_tag, const int targe
 	cout << "    " << '\t' << "seceret" << endl;
 
 	size_t i=0;
+	int last_printed = -1;
 	while(!file.eof()) {
 		string tag;
 		getline(file, tag);
 		string enc;
 		getline(file, enc);
 		if(!enc.empty()) {
-			//enc = numstr_2_charstr(enc);
 			if((target_tag.empty() && target_idx==-1) || (!target_tag.empty() && target_tag==tag) || target_idx==i) {
-				//string dec = decrypt(enc, key);
-				secret s;
-				s.set_key(key);
-				s.set_enc(enc);
-				s.decrypt();
-				cout << "  " << i << '\t' << tag << endl;
-				cout << "    " << '\t' << s.get_dec() << endl;
+				secret *s = new secret;
+				s->set_key(key);
+				s->set_enc(enc);
+				s->set_tag(tag);
+				s->set_idx(i);
+				s->set_last_printed(&last_printed);
+				
+				pthread_mutex_lock(&set_lock);
+				pthread_t thread;
+				pthread_create(&thread, NULL, thd_read, (void*)s);
+				thds.insert(thread);
+				pthread_mutex_unlock(&set_lock);
+
 			}
 			++i;
 		}
 	}
+	wait_for_thds();
 	cout << endl;
 	file.close();
 }
 
-void write_secrets(const string& fname) {
-	ofstream file(fname, std::ios::app);
-	if(!file) {
-		cerr << "Could not open file" << endl;
-		return;
-	}
+void* thd_write(void *arg) {
+	secret *s = (secret *)arg;
+	s->encrypt();
+	pthread_mutex_lock(&file_lock);
+	s->write();
+	pthread_mutex_unlock(&file_lock);
 
+	delete s;
+	tryremove();
+	return nullptr;
+}
+
+void write_secrets(const string& fname) {
 	cout << "  enter a key: "; 
 	string key; 
 	getline(cin, key); 
@@ -67,16 +131,22 @@ void write_secrets(const string& fname) {
 	if(dec.empty()) {
 		cerr << "Can't write - phrase is empty" << endl << endl;
 	} else {
-		secret s;
-		s.set_key(key);
-		s.set_dec(dec);
-		s.encrypt();
+		secret *s = new secret;
+		s->set_key(key);
+		s->set_dec(dec);
+		s->set_fname(fname);
+		s->set_tag(tag);
 
-		file << tag << endl;
-		s.write(file);
-		cout << "  Done" << endl << endl;
+		pthread_mutex_lock(&set_lock);
+		pthread_t thread;
+		pthread_create(&thread, NULL, thd_write, (void*)s);
+		// add the new thread to the set of working threads
+		// to be (possibly) joined on
+		thds.insert(thread);
+		pthread_mutex_unlock(&set_lock);
+
+		cout << endl;
 	}
-	file.close();
 }
 
 void list_secrets(const string& fname) {
@@ -191,6 +261,9 @@ int main(int argc, char **argv) {
 		if(!strcmp(argv[1], "test"))
 			return 0;
 
+	set_lock = PTHREAD_MUTEX_INITIALIZER;
+	file_lock = PTHREAD_MUTEX_INITIALIZER;
+	cv = PTHREAD_COND_INITIALIZER;
 	print_intro();
 	string homepath = getenv("HOME");
 	string fname(homepath + "/.secrets.txt");
@@ -236,6 +309,7 @@ int main(int argc, char **argv) {
 				test_path(fname);
 				break;
 			case 'q':
+				wait_for_thds();
 				return 0;
 		}
 	}
