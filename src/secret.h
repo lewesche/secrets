@@ -1,5 +1,5 @@
-#ifndef SECRETS
-#define SECRETS
+#ifndef SECRET
+#define SECRET
 
 
 /*  ~~~ WARING ~~~
@@ -22,7 +22,6 @@ private:
 	std::string fname; // filename for writing
 	std::string tag;
 	size_t idx;
-	int* last_printed; // used to keep print order with lots of threads
 
 public: 
 	// set_enc xpects a string of numbers, where each 3 ranges from 0-256
@@ -32,7 +31,6 @@ public:
 	void set_fname(const std::string& f);
 	void set_tag(const std::string& t);
 	void set_idx(size_t i);
-	void set_last_printed(int *addr);
 
 	const std::string& get_enc() const; 
 	const std::string& get_dec() const;
@@ -40,7 +38,6 @@ public:
 	const std::string& get_fname() const;
 	const std::string& get_tag() const;
 	size_t get_idx() const;
-	int* get_last_printed() const;
 
 	void encrypt();
 	void decrypt();

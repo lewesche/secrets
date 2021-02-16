@@ -31,10 +31,6 @@ void secret::set_idx(size_t i) {
 	idx = i;
 }
 
-void secret::set_last_printed(int *addr) {
-	last_printed = addr;
-}
-
 const string& secret::get_enc() const {
 	return enc;
 }
@@ -57,10 +53,6 @@ const string& secret::get_tag() const {
 
 size_t secret::get_idx() const {
 	return idx;
-}
-
-int* secret::get_last_printed() const {
-	return last_printed;
 }
 
 string secret::shift(const string& phrase, int multiplier) const {
