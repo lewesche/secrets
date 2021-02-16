@@ -41,6 +41,7 @@ public:
 
 	void encrypt();
 	void decrypt();
+	void check_dec(); // If dec contains invalid characters, replace them with '?'
 
 	// Writing to the output file as nums instead of single characters 
 	// 1/3 as efficient as writing the actual chars, but saves needing

@@ -106,6 +106,14 @@ void secret::encrypt() {
 
 void secret::decrypt() {
 	dec = shift(enc, -1*MULTIPLIER);
+	check_dec();
+}
+
+void secret::check_dec() {
+	for(size_t i=0; i<dec.size(); ++i) {
+		if(dec[i] <= 0x1f || dec[i] >= 0x7f) 
+			dec[i] = '?';
+	}	
 }
 
 char secret::strsum(string s) const {
