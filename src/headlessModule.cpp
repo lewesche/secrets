@@ -47,8 +47,14 @@ int HeadlessModule::run() {
 					return -1;
 				}
 				q = WRITE;
+
 				dec = argv[i+1];
 				++i;
+				while(i+1 < argc && argv[i+1][0] != '-') {
+					dec += ' ';
+					dec += argv[i+1];
+					++i;
+				}
                 break;
             case 'f':
 				if(q != INVAL) {
@@ -71,6 +77,11 @@ int HeadlessModule::run() {
 			case 'k':
 				key = argv[i+1];
 				++i;
+				while(i+1 < argc && argv[i+1][0] != '-') {
+					key += ' ';
+					key += argv[i+1];
+					++i;
+				}
 				break;
 			case 'i':
 				idx = atoi(argv[i+1]);
@@ -86,6 +97,7 @@ int HeadlessModule::run() {
             case 'p':
 				defaultFile = false;
 				fname = argv[i+1];
+				test_path();
 				++i;
                 break;
 			default:

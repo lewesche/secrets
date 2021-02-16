@@ -176,7 +176,7 @@ void BaseModule::delete_secrets(const string& target_tag, const int target_idx) 
 void BaseModule::test_path() {
     ifstream ifile(fname);
     if(!ifile){
-        cout << "  Couldn't find " << fname << ", creating file." << endl << endl;
+        //cout << "  Couldn't find " << fname << ", creating file." << endl << endl;
         ofstream ofile(fname);
     } else {
         ifile.close();
