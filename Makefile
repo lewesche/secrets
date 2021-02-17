@@ -1,5 +1,5 @@
 CXX = g++
-CPPFLAGS = -Wall -g -std=c++11 
+CPPFLAGS = -Wall -g -std=c++11 -pthread 
 BIN_DIR = bin
 SRC_DIR = src
 
