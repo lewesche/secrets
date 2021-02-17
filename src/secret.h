@@ -39,6 +39,9 @@ public:
 	const std::string& get_tag() const;
 	size_t get_idx() const;
 
+	bool has_dec() const;
+	bool has_tag() const;
+
 	void encrypt();
 	void decrypt();
 	void check_dec(); // If dec contains invalid characters, replace them with '?'

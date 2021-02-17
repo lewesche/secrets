@@ -9,8 +9,10 @@ private:
 	bool is_int(std::string str);
 	void get_targets(std::string& target_tag, int& target_idx);
 	
-	void read_secrets(const std::string& target_tag, const int target_idx);
+	void read_secrets();
 	void write_secrets();
+	void list_secrets();
+	void delete_secrets();
 public:
 	InteractiveModule();
 	int run();

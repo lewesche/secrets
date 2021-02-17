@@ -89,36 +89,61 @@ void BaseModule::base_write(const string& key, const string& dec, const string& 
     }
 }
 
-void BaseModule::printSecrets(vector<secret*>& vec) {
+void BaseModule::print_secrets(vector<secret*>& vec) {
     for(size_t i=0; i<vec.size(); ++i) {
         secret *s = vec[i];
         cout << "  " << s->get_idx() << '\t' << s->get_tag() << endl;
-        cout << "    " << '\t' << s->get_dec() << endl;
+		if(s->has_dec())
+        	cout << "    " << '\t' << s->get_dec() << endl;
         delete s;
     }
     cout<<endl;
 }
 
-void BaseModule::printJson(vector<secret*>& vec) {
+void BaseModule::print_secrets_json(vector<secret*>& vec) {
 	cout << "[";
 
     for(size_t i=0; i<vec.size(); ++i) {
         secret *s = vec[i];
 		if(i!=0)
 			cout << ",";
-		cout << "{\"idx:\":\"" << s->get_idx() << "\",\"tag\":\"" << s->get_tag() << "\",\"dec\":\"" << s->get_dec() << "\"}";
+		cout << "{\"idx:\":\"" << s->get_idx(); 
+		if(s->has_tag())
+			cout << "\",\"tag\":\"" << s->get_tag();
+		if(s->has_dec())
+			cout << "\",\"dec\":\"" << s->get_dec();
+		cout << "\"}";
         delete s;
     }
     cout << "]" << endl;
 }
 
-void BaseModule::list_secrets() {
+vector<secret*> BaseModule::base_list(const string& target_tag, const int target_idx) {
+	vector<secret*> res;
     ifstream file(fname);
     if(!file) {
         cerr << "  Could not open file" << endl << endl;
-        return;
+        return res;
     }
 
+ 	size_t i=0;
+    while(!file.eof()) {
+        string tag;
+        getline(file, tag);
+        string enc;
+        getline(file, enc); // not used, but need to skip the line
+        if(!enc.empty()) {
+            if((target_tag.empty() && target_idx==-1) || (!target_tag.empty() && target_tag==tag) || target_idx==i) {
+                secret *s = new secret;
+                s->set_tag(tag);
+                s->set_idx(i);
+				res.push_back(s);
+            }
+            ++i;
+        }
+    }
+
+	/*
     cout << "  " << "idx" << '\t' << "tag" << endl;
 
     size_t i=0;
@@ -133,12 +158,12 @@ void BaseModule::list_secrets() {
         }
     }
     cout << endl;
+	*/
     file.close();
-
+	return res;
 }
 
-
-void BaseModule::delete_secrets(const string& target_tag, const int target_idx) {
+void BaseModule::base_delete(const string& target_tag, const int target_idx) {
     ifstream file(fname);
     if(!file) {
         cerr << "  Could not open file" << endl << endl;

@@ -16,9 +16,8 @@ InteractiveModule::InteractiveModule() {
 
 void InteractiveModule::print_help() {
     cout << "  h \t show all commands" << endl;
-    cout << "  r \t read all secrets" << endl;
+    cout << "  r \t read all secret(s) by tag or numerical index" << endl;
     cout << "  w \t write new secret" << endl;
-    cout << "  f \t find and read secret(s) by tag or index" << endl << "    \t   indicies are integers, tags are not" << endl;
     cout << "  l \t list all tags/indicies" << endl;
     cout << "  d \t delete secret(s) by tag or index" << endl << "    \t   does nothing if no matches are found" << endl;
     cout << "  p \t use new path to secrets file" << endl << "    \t   creates a new file if the file is not found" << endl;
@@ -41,29 +40,36 @@ bool InteractiveModule::is_int(string str) {
 }
 
 void InteractiveModule::get_targets(string& target_tag, int& target_idx) {
-    cout << "  enter tag/index: ";
+    cout << "  enter tag (optional): ";
     getline(cin, target_tag);
-    if(is_int(target_tag)) {
-        target_idx = stoi(target_tag);
-        target_tag = "";
+
+    cout << "  enter index (optional): ";
+	string buf;
+    getline(cin, buf);
+
+	if(!buf.empty() && is_int(buf)) {
+        target_idx = stoi(buf);
     } else {
         target_idx = -1;
     }
 }
 
-
 // Reads secret based on tag or idx
 // Reads all secrets if target_idx = -1 and target_tag is empty
-void InteractiveModule::read_secrets(const string& target_tag, const int target_idx) {
-    cout << "  enter a key: ";
+void InteractiveModule::read_secrets() {
+	cout << "  enter a key: ";
     string key;
     getline(cin, key);
+
+	string tag; 
+	int idx;
+	get_targets(tag, idx);
 
     cout << "  " << "idx" << '\t' << "tag" << endl;
     cout << "    " << '\t' << "secret" << endl;
 
-	vector<secret*> res = base_read(key, target_tag, target_idx);
-	printSecrets(res);
+	vector<secret*> res = base_read(key, tag, idx);
+	print_secrets(res);
 }
 
 void InteractiveModule::write_secrets() {
@@ -82,11 +88,27 @@ void InteractiveModule::write_secrets() {
 	base_write(key, dec, tag);
 }
 
+void InteractiveModule::list_secrets() {
+	string tag; 
+	int idx;
+	get_targets(tag, idx);
+
+    cout << "  " << "idx" << '\t' << "tag" << endl;
+
+	vector<secret*> res = base_list(tag, idx);	
+	print_secrets(res);
+}
+
+void InteractiveModule::delete_secrets() {
+	string tag; 
+	int idx;
+	get_targets(tag, idx);
+
+	base_delete(tag, idx);	
+}
+
 int InteractiveModule::run() {
     while(1) {
-        string target_tag; // c++ didn't like this in the switch statement
-        int target_idx=-1;
-
         cout << "  enter command (r/w/f/l/d/p/q/h): ";
         char select;
         cin >> select;
@@ -102,21 +124,16 @@ int InteractiveModule::run() {
                 print_help();
                 break;
             case 'r':
-                read_secrets("", -1);
+                read_secrets();
                 break;
             case 'w':
                 write_secrets();
-                break;
-            case 'f':
-                get_targets(target_tag, target_idx);
-                read_secrets(target_tag, target_idx);
                 break;
             case 'l':
                 list_secrets();
                 break;
             case 'd':
-                get_targets(target_tag, target_idx);
-                delete_secrets(target_tag, target_idx);
+                delete_secrets();
                 break;
             case 'p':
                 cout << "  enter filename/path: ";

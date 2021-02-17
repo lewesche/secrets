@@ -21,16 +21,19 @@ public:
 	//base_read allocated memory
 	std::vector<secret*> base_read(const std::string& key, const std::string& target_tag, const int target_idx);
 	void base_write(const std::string& key, const std::string& dec, const std::string& tag);
-	void list_secrets();
-	void delete_secrets(const std::string& target_tag, const int target_idx);
+	std::vector<secret*> base_list(const std::string& target_tag, const int target_idx);
 
-	virtual void read_secrets(const std::string& target_tag, const int target_idx) = 0;
+	void base_delete(const std::string& target_tag, const int target_idx);
+
+	virtual void read_secrets() = 0;
 	virtual void write_secrets() = 0;
+	virtual void list_secrets() = 0;
+	virtual void delete_secrets() = 0;
 
 	void test_path();
 
-	void printSecrets(std::vector<secret*>& vec);
-	void printJson(std::vector<secret*>& vec);
+	void print_secrets(std::vector<secret*>& vec);
+	void print_secrets_json(std::vector<secret*>& vec);
 
 private:
 	void thd_read();

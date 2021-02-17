@@ -55,6 +55,14 @@ size_t secret::get_idx() const {
 	return idx;
 }
 
+bool secret::has_dec() const {
+	return !dec.empty();
+}
+
+bool secret::has_tag() const {
+	return !tag.empty();
+}
+
 string secret::shift(const string& phrase, int multiplier) const {
 	// The multiplier input is pretty much arbitrary as long as 
 	// the abs value of the multipliers used for encryption and

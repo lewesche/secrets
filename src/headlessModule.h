@@ -7,15 +7,12 @@ public:
 	enum Query {
 		READ,
 		WRITE,
-		FIND,
 		LIST,
 		DELETE,
 		INVAL
 	};
 
 private:
-	void read_secrets(const std::string& target_tag, const int target_idx);
-	void write_secrets();
 	int argc;
 	char **argv;
 	bool defaultFile;
@@ -26,6 +23,11 @@ private:
 	std::string dec;
 	std::string tag;
 	int idx;
+
+	void read_secrets();
+	void write_secrets();
+	void list_secrets();
+	void delete_secrets();
 
 public:
 	HeadlessModule(int argc, char **argv);

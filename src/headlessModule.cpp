@@ -18,17 +18,30 @@ HeadlessModule::HeadlessModule(int c, char **v) : argc{c}, argv{v} {
 	json = false;
 }
 
-void HeadlessModule::read_secrets(const string& target_tag, const int target_idx) {
+void HeadlessModule::read_secrets() {
 		vector<secret*> res = base_read(key, tag, idx);
 		if(json) {
-			printJson(res);
+			print_secrets_json(res);
 		} else {
-			printSecrets(res);
+			print_secrets(res);
 		}
 }
 
 void HeadlessModule::write_secrets() {
 		base_write(key, dec, tag);
+}
+
+void HeadlessModule::list_secrets() {
+		vector<secret*> res = base_list(tag, idx);
+		if(json) {
+			print_secrets_json(res);
+		} else {
+			print_secrets(res);
+		}
+}
+
+void HeadlessModule::delete_secrets() {
+		base_delete(tag, idx);
 }
 
 int HeadlessModule::run() {
@@ -55,12 +68,6 @@ int HeadlessModule::run() {
 					dec += argv[i+1];
 					++i;
 				}
-                break;
-            case 'f':
-				if(q != INVAL) {
-					return -1;
-				}
-				q = FIND;
                 break;
             case 'l':
 				if(q != INVAL) {
@@ -113,19 +120,16 @@ int HeadlessModule::run() {
 
 	switch(q) {
 	case READ:
-		read_secrets("", -1);
+		read_secrets();
 		break;
 	case WRITE:
 		write_secrets();
-		break;
-	case FIND:
-		read_secrets(tag, idx);
 		break;
 	case LIST:
 		list_secrets();
 		break;
 	case DELETE:
-		delete_secrets(tag, idx);
+		delete_secrets();
 		break;
 	case INVAL:
 		return -1;
