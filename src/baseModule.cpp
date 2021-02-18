@@ -114,7 +114,7 @@ void BaseModule::print_secrets_json(vector<secret*>& vec) {
         secret *s = vec[i];
 		if(i!=0)
 			cout << ",";
-		cout << "{\"idx:\":\"" << s->get_idx(); 
+		cout << "{\"idx\":\"" << s->get_idx(); 
 		if(s->has_tag())
 			cout << "\",\"tag\":\"" << s->get_tag();
 		if(s->has_dec())
@@ -150,22 +150,6 @@ vector<secret*> BaseModule::base_list(const string& target_tag, const int target
         }
     }
 
-	/*
-    cout << "  " << "idx" << '\t' << "tag" << endl;
-
-    size_t i=0;
-    while(!file.eof()) {
-        string tag;
-        getline(file, tag);
-        string enc;
-        getline(file, enc); // not used
-        if(!enc.empty() && !tag.empty()) {
-            cout << "  " << i << '\t' << tag << endl;
-            ++i;
-        }
-    }
-    cout << endl;
-	*/
     file.close();
 	return res;
 }
