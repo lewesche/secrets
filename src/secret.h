@@ -53,12 +53,13 @@ public:
 	// Disks are big
 	void write() const;
 
-private:
-	std::string shift(const std::string& phrase, int multiplier) const;
-	char strsum(std::string s) const;
 
+private:
 	// Converts a string of 3-char numbers (0-256) to a string of chars
 	std::string numstr_2_charstr(const std::string& numstr) const;
+
+	std::string shift(const std::string& phrase, int multiplier) const;
+	char strsum(std::string s) const;
 };
 
 #endif

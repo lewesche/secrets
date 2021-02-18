@@ -82,6 +82,10 @@ int HeadlessModule::run() {
 				q = DELETE;
                 break;
 			case 'k':
+				if(i+1 >= argc || argv[i+1][0]=='-') {
+					//reading/writing with a blank key
+					break;
+				}
 				key = argv[i+1];
 				++i;
 				while(i+1 < argc && argv[i+1][0] != '-') {

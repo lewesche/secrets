@@ -40,6 +40,7 @@ vector<secret*> BaseModule::base_read(const string& key, const string& target_ta
         return res;
     }
 
+
 	// build queue of jobs
     size_t i=0;
     while(!file.eof()) {
@@ -54,7 +55,12 @@ vector<secret*> BaseModule::base_read(const string& key, const string& target_ta
                 s->set_enc(enc);
                 s->set_tag(tag);
                 s->set_idx(i);
-				jobs.push(s);
+				if(key.empty()) {
+					//no need to decode
+					s->set_dec(s->get_enc());
+				} else {
+					jobs.push(s);
+				}
 				res.push_back(s);
             }
             ++i;
