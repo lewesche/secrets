@@ -57,6 +57,7 @@ vector<secret*> BaseModule::base_read(const string& key, const string& target_ta
                 s->set_idx(i);
 				if(key.empty()) {
 					//no need to decode
+					s->check_dec();
 					s->set_dec(s->get_enc());
 				} else {
 					jobs.push(s);
