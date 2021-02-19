@@ -39,3 +39,6 @@ bin
 
 # vim
 *.swp
+
+# rust target
+/backend/target
