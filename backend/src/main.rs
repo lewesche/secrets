@@ -4,6 +4,11 @@ use rocket::{get, routes};
 use dirs::home_dir;
 use std::process::Command;
 
+fn get_path() -> String {
+    let db_path = String::from(" -p /var/secrets_data/");
+    return db_path;
+}
+
 #[get("/secrets/usr/<name>?<w>&<k>&<t>")]
 fn write(name: String, w: String, k: String, t: Option<String>) -> String {
     let mut query = String::from("secrets -w ");
@@ -12,22 +17,15 @@ fn write(name: String, w: String, k: String, t: Option<String>) -> String {
     query.push_str(" -j -k ");
     query.push_str(k.as_str());
     
-    let mut usrpath = String::from(" -p ");
-
-    match home_dir() {
-        Some(path) => usrpath.push_str(&path.into_os_string().into_string().unwrap()),
-        None => (),
-    }
-
-    usrpath.push_str("/secrets_data/");
-    usrpath.push_str(name.as_str());
-    usrpath.push_str(".txt");
-    query.push_str(usrpath.as_str());
-
     match t {
         Some(t) => {query.push_str(" -t "); query.push_str(t.as_str())},
         None => (),
     }
+
+    let mut usrpath = get_path();
+    usrpath.push_str(name.as_str());
+    usrpath.push_str(".txt");
+    query.push_str(usrpath.as_str());
 
     // for debugging
     println!("{}", query.as_str());
@@ -47,18 +45,6 @@ fn read(name: String, k: String, t: Option<String>, i: Option<String>) -> String
     let mut query = String::from("secrets -r -j -k ");
     query.push_str(k.as_str());
     
-    let mut usrpath = String::from(" -p ");
-
-    match home_dir() {
-        Some(path) => usrpath.push_str(&path.into_os_string().into_string().unwrap()),
-        None => (),
-    }
-
-    usrpath.push_str("/secrets_data/");
-    usrpath.push_str(name.as_str());
-    usrpath.push_str(".txt");
-    query.push_str(usrpath.as_str());
-
     match t {
         Some(t) => {query.push_str(" -t "); query.push_str(t.as_str())},
         None => (),
@@ -68,6 +54,11 @@ fn read(name: String, k: String, t: Option<String>, i: Option<String>) -> String
         Some(i) => {query.push_str(" -i "); query.push_str(i.as_str())},
         None => (),
     }
+
+    let mut usrpath = get_path();
+    usrpath.push_str(name.as_str());
+    usrpath.push_str(".txt");
+    query.push_str(usrpath.as_str());
 
     // for debugging
     println!("{}", query.as_str());
@@ -92,11 +83,6 @@ fn list(name: String, t: Option<String>, i: Option<String>) -> String {
         None => (),
     }
 
-    usrpath.push_str("/secrets_data/");
-    usrpath.push_str(name.as_str());
-    usrpath.push_str(".txt");
-    query.push_str(usrpath.as_str());
-
     match t {
         Some(t) => {query.push_str(" -t "); query.push_str(t.as_str())},
         None => (),
@@ -106,6 +92,11 @@ fn list(name: String, t: Option<String>, i: Option<String>) -> String {
         Some(i) => {query.push_str(" -i "); query.push_str(i.as_str())},
         None => (),
     }
+
+    let mut usrpath = get_path();
+    usrpath.push_str(name.as_str());
+    usrpath.push_str(".txt");
+    query.push_str(usrpath.as_str());
 
     // for debugging
     println!("{}", query.as_str());
@@ -130,11 +121,6 @@ fn delete(name: String, t: Option<String>, i: Option<String>) -> String {
         None => (),
     }
 
-    usrpath.push_str("/secrets_data/");
-    usrpath.push_str(name.as_str());
-    usrpath.push_str(".txt");
-    query.push_str(usrpath.as_str());
-
     match t {
         Some(t) => {query.push_str(" -t "); query.push_str(t.as_str())},
         None => (),
@@ -145,6 +131,11 @@ fn delete(name: String, t: Option<String>, i: Option<String>) -> String {
         None => (),
     }
     
+    let mut usrpath = get_path();
+    usrpath.push_str(name.as_str());
+    usrpath.push_str(".txt");
+    query.push_str(usrpath.as_str());
+
     // for debugging
     println!("{}", query.as_str());
 

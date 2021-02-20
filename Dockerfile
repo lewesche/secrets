@@ -2,11 +2,11 @@ FROM rust
 
 RUN mkdir /app
 WORKDIR /app
+RUN mkdir /var/secrets_data
 
 COPY . .
 
 # Compile and install the c++ binary
-RUN mkdir $HOME/secrets_data
 RUN chmod +x *.sh
 RUN ./install.sh
 
