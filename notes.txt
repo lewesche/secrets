@@ -1,2 +1,2 @@
 To run container locally on macOS: 
-docker run --rm -it -p 3000:3000 <containerID>
+docker run --rm -it -p 8000:8000 <containerID>
