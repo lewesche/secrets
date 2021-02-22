@@ -7,7 +7,7 @@ use mongodb::{
     sync::Client,
 };
 
-const LOCAL_DATA_PATH: &str = "-p /var/secrets_data/";
+const LOCAL_DATA_PATH: &str = " -p /var/secrets_data/";
 
 fn append_path(query: &mut String, name: String) {
     let mut usrpath = String::from(LOCAL_DATA_PATH);
@@ -16,8 +16,22 @@ fn append_path(query: &mut String, name: String) {
     query.push_str(usrpath.as_str());
 }
 
-#[get("/secrets/usr/<name>?<w>&<k>&<t>")]
-fn write(name: String, w: String, k: String, t: Option<String>) -> String {
+#[get("/secrets/usr/<name>?<pwd>&<w>&<k>&<t>")]
+fn write(name: String, pwd: Option<String>, w: String, k: String, t: Option<String>) -> String {
+    let result = db_lookup_user(&name, pwd, false);        
+    match result {
+        Err(e) => { 
+            println!("Error: {}", e);
+            format!("{{\"success\":\"false\", \"e\":\"Error accessing database.\"}}")
+        }, 
+        Ok(val) => { 
+            match val {
+                UserStatus::Created => format!("{{\"success\":\"false\", \"e\":\"Unknown Error\"}}"),
+                UserStatus::DoesNotExist => format!("{{\"success\":\"false\", \"e\":\"User does not exist!\"}}"),
+                UserStatus::Exists(auth) => { 
+                    if !auth {
+                        format!("{{\"success\":\"false\", \"e\":\"Incorrect password\"}}")
+                    } else {
     let mut query = String::from("secrets -w ");
     query.push_str(w.as_str());
 
@@ -42,69 +56,78 @@ fn write(name: String, w: String, k: String, t: Option<String>) -> String {
     let data = output.stdout;
     
     format!("{}", String::from_utf8(data).unwrap())
+                    }
+                },
+            }
+        },
+    }
 }
 
-#[get("/secrets/usr/<name>?r&<k>&<t>&<i>", rank=1)]
-fn read(name: String, k: String, t: Option<String>, i: Option<String>) -> String {
-    let mut query = String::from("secrets -r -j -k ");
-    query.push_str(k.as_str());
+#[get("/secrets/usr/<name>?<pwd>&r&<k>&<t>&<i>", rank=1)]
+fn read(name: String, pwd: Option<String>, k: String, t: Option<String>, i: Option<String>) -> String {
+    let result = db_lookup_user(&name, pwd, false);        
+    match result {
+        Err(e) => { 
+            println!("Error: {}", e);
+            format!("{{\"success\":\"false\", \"e\":\"Error accessing database.\"}}")
+        }, 
+        Ok(val) => { 
+            match val {
+                UserStatus::Created => format!("{{\"success\":\"false\", \"e\":\"Unknown Error\"}}"),
+                UserStatus::DoesNotExist => format!("{{\"success\":\"false\", \"e\":\"User does not exist!\"}}"),
+                UserStatus::Exists(auth) => { 
+                    if !auth {
+                        format!("{{\"success\":\"false\", \"e\":\"Incorrect password\"}}")
+                    } else {
+                        let mut query = String::from("secrets -r -j -k ");
+                        query.push_str(k.as_str());
     
-    match t {
-        Some(t) => {query.push_str(" -t "); query.push_str(t.as_str())},
-        None => (),
-    }
+                        match t {
+                            Some(t) => {query.push_str(" -t "); query.push_str(t.as_str())},
+                            None => (),
+                        }
 
-    match i {
-        Some(i) => {query.push_str(" -i "); query.push_str(i.as_str())},
-        None => (),
-    }
+                        match i {
+                            Some(i) => {query.push_str(" -i "); query.push_str(i.as_str())},
+                            None => (),
+                        }
 
-    append_path(&mut query, name);
+                        append_path(&mut query, name);
 
-    // for debugging
-    println!("{}", query.as_str());
+                        // for debugging
+                        println!("{}", query.as_str());
 
-    let output =Command::new("sh")
-            .arg("-c")
-            .arg(query.as_str())
-            .output()
-            .expect("failed to execute process");
-    let data = output.stdout;
+                        let output =Command::new("sh")
+                            .arg("-c")
+                            .arg(query.as_str())
+                            .output()
+                            .expect("failed to execute process");
+                        let data = output.stdout;
     
-    format!("{}", String::from_utf8(data).unwrap())
+                        format!("{}", String::from_utf8(data).unwrap())
+                    }
+                },
+            }
+        },
+    }
 }
 
-#[get("/secrets/usr/<name>?l&<t>&<i>", rank=2)]
-fn list(name: String, t: Option<String>, i: Option<String>) -> String {
-    let mut query = String::from("secrets -l -j");
-
-    match t {
-        Some(t) => {query.push_str(" -t "); query.push_str(t.as_str())},
-        None => (),
-    }
-
-    match i {
-        Some(i) => {query.push_str(" -i "); query.push_str(i.as_str())},
-        None => (),
-    }
-
-    append_path(&mut query, name);
-
-    // for debugging
-    println!("{}", query.as_str());
-
-    let output =Command::new("sh")
-            .arg("-c")
-            .arg(query.as_str())
-            .output()
-            .expect("failed to execute process");
-    let data = output.stdout;
-    
-    format!("{}", String::from_utf8(data).unwrap())
-}
-
-#[get("/secrets/usr/<name>?d&<t>&<i>")]
-fn delete(name: String, t: Option<String>, i: Option<String>) -> String {
+#[get("/secrets/usr/<name>?<pwd>&d&<t>&<i>")]
+fn delete(name: String, pwd: Option<String>, t: Option<String>, i: Option<String>) -> String {
+    let result = db_lookup_user(&name, pwd, false);        
+    match result {
+        Err(e) => { 
+            println!("Error: {}", e);
+            format!("{{\"success\":\"false\", \"e\":\"Error accessing database.\"}}")
+        }, 
+        Ok(val) => { 
+            match val {
+                UserStatus::Created => format!("{{\"success\":\"false\", \"e\":\"Unknown Error\"}}"),
+                UserStatus::DoesNotExist => format!("{{\"success\":\"false\", \"e\":\"User does not exist!\"}}"),
+                UserStatus::Exists(auth) => { 
+                    if !auth {
+                        format!("{{\"success\":\"false\", \"e\":\"Incorrect password\"}}")
+                    } else {
     let mut query = String::from("secrets -d");
 
     match t {
@@ -130,42 +153,114 @@ fn delete(name: String, t: Option<String>, i: Option<String>) -> String {
     let data = output.stdout;
     
     format!("{}", String::from_utf8(data).unwrap())
-}
-
-
-fn test_mongo() -> Result<(), mongodb::error::Error> {
-    //let client = Client::with_uri_str("mongodb://localhost:27017")?;
-    //let database = client.database("mydb");
-    //let collection = database.collection("books");
-
-    println!("connecting to db");
-    let client = Client::with_uri_str("mongodb+srv://lewesche:1234@cluster0.e6ckn.mongodb.net/secrets?retryWrites=true&w=majority")?;
-    for db_name in client.list_database_names(None, None)? {
-        println!("Database: {}", db_name);
+                    }
+                },
+            }
+        },
     }
-    println!("done printing db names");
-    Ok(())
 }
 
+
+
+#[get("/secrets/new?<name>&<pwd>")]
+fn create_user(name: String, pwd: Option<String>) -> String { 
+    let result = db_lookup_user(&name, pwd, true);        
+    match result {
+        Ok(val) => { 
+            match val {
+                UserStatus::Created => format!("{{\"success\":\"true\"}}"),
+                UserStatus::Exists(_auth) => format!("{{\"success\":\"false\", \"e\":\"User already exists!\"}}"),
+                UserStatus::DoesNotExist => format!("{{\"success\":\"false\", \"e\":\"Unknown Error\"}}"),
+            }
+        }
+        Err(e) => { 
+            println!("Error: {}", e);
+            format!("{{\"success\":\"false\", \"e\":\"Error accessing database.\"}}")
+        }, 
+    }
+}
+
+enum UserStatus {
+    Exists(bool),
+    Created,
+    DoesNotExist,
+}
+
+fn db_lookup_user(usr: &String, pwd: Option<String>, create: bool) -> Result<UserStatus, mongodb::error::Error> {
+    let client = Client::with_uri_str("mongodb+srv://lewesche:1234@cluster0.e6ckn.mongodb.net/secrets?retryWrites=true&w=majority")?;
+    let result = client.database("secrets").collection("users").find_one(doc! { "usr": usr.as_str() }, None)?;
+        match result {
+            Some(document) => {
+                if let Some(sum) = document.get("sum").and_then(Bson::as_str) {
+                    match pwd {
+                        Some(pwd) => {
+                            if sum == pwd.as_str() {
+                                return Ok(UserStatus::Exists(true))
+                            } else {
+                                return Ok(UserStatus::Exists(false))
+                            }
+                        },
+                        None => {
+                            return Ok(UserStatus::Exists(false));
+                        },  
+                    }
+                } else {
+                    return Ok(UserStatus::Exists(true))
+                }
+            },
+            None => {
+                if create {
+                    db_create_user(&client, &usr, pwd)?;
+                    return Ok(UserStatus::Created)
+                }
+            },
+        }
+    Ok(UserStatus::DoesNotExist)
+}
+
+fn db_create_user(cli: &Client, usr: &String, pwd: Option<String>) -> Result<(), mongodb::error::Error> {
+    //let client = Client::with_uri_str("mongodb+srv://lewesche:1234@cluster0.e6ckn.mongodb.net/secrets?retryWrites=true&w=majority")?;
+
+    let doc;
+    match pwd {
+        Some(pwd) => doc = doc! { "usr": usr.as_str(), "sum": pwd.as_str() },
+        None => doc = doc! { "usr": usr.as_str() },
+    }
+
+    println!("new user: {}", doc);
+    cli.database("secrets").collection("users").insert_one(doc, None)?;
+
+    Ok(())
+
+}
 
 fn main() {
-    // Parse a connection string into an options struct.
-    //let mut client_options = ClientOptions::parse("mongodb+srv://lewesche:1234@cluster0.e6ckn.mongodb.net/secrets?retryWrites=true&w=majority").await?;
+    /*
+    let usr =String::from("testusr_password");
+    let pwd = String::from("1234");
 
-    // Manually set an option.
-    //client_options.app_name = Some("My App".to_string());
+    let result = db_check_user(&usr, Some(&pwd), false);        
+    match result {
+        Ok(val) => { 
+            match val {
+                UserStatus::Exists(auth) => println!("exists, authenticated: {}", auth),
+                UserStatus::DoesNotExist => println!("does not exist"),
+            }
+        }
+        Err(e) => {
+            println!("database error: {}", e);
+        }
+    }
 
-    // Get a handle to the deployment.
-    //let client = Client::with_options(client_options)?;
+    let new_usr =String::from("new_testusr");
+    let new_pwd = String::from("5678");
+    db_check_user(&new_usr, Some(&new_pwd), true); 
 
-    // List the names of the databases in that deployment.
-    //for db_name in client.list_database_names(None, None).await? {
-    //    println!("{}", db_name);
-    //}
-
-    test_mongo();        
-
-    rocket::ignite().mount("/", routes![read, write, list, delete]).launch();
+    let another_usr =String::from("another_testusr");
+    db_check_user(&another_usr, None, true); 
+    */
+    
+    rocket::ignite().mount("/", routes![read, write, delete, create_user]).launch();
 }
 
 
