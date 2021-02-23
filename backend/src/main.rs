@@ -1,6 +1,10 @@
 #![feature(proc_macro_hygiene, decl_macro)]
 
-use rocket::{get, routes};
+use std::error::Error;
+use std::fmt;
+
+use rocket::{post, routes};
+use json;
 use std::process::Command;
 use mongodb::{
     bson::{doc, Bson},
@@ -8,6 +12,7 @@ use mongodb::{
 };
 
 const LOCAL_DATA_PATH: &str = " -p /var/secrets_data/";
+const DB_AUTH: &str = "mongodb+srv://lewesche:1234@cluster0.e6ckn.mongodb.net/secrets?retryWrites=true&w=majority";
 
 fn append_path(query: &mut String, name: String) {
     let mut usrpath = String::from(LOCAL_DATA_PATH);
@@ -16,56 +21,27 @@ fn append_path(query: &mut String, name: String) {
     query.push_str(usrpath.as_str());
 }
 
-#[get("/secrets/usr/<name>?<pwd>&<w>&<k>&<t>")]
-fn write(name: String, pwd: Option<String>, w: String, k: String, t: Option<String>) -> String {
-    let result = db_lookup_user(&name, pwd, false);        
+#[post("/secrets/usr", format = "application/json", data="<body>")]
+fn query(body: String) -> String {
+    let body = json::parse(body.as_str());
+    let body = match body {
+        Ok(body) => body,
+        Err(_e) => return String::from("Bad json in post"),
+    };
+
+    let result = parse_query_body(body);
+    let (query, user, pwd);
+
     match result {
-        Err(e) => { 
-            println!("Error: {}", e);
-            format!("{{\"success\":\"false\", \"e\":\"Error accessing database.\"}}")
-        }, 
-        Ok(val) => { 
-            match val {
-                UserStatus::Created => format!("{{\"success\":\"false\", \"e\":\"Unknown Error\"}}"),
-                UserStatus::DoesNotExist => format!("{{\"success\":\"false\", \"e\":\"User does not exist!\"}}"),
-                UserStatus::Exists(auth) => { 
-                    if !auth {
-                        format!("{{\"success\":\"false\", \"e\":\"Incorrect password\"}}")
-                    } else {
-    let mut query = String::from("secrets -w ");
-    query.push_str(w.as_str());
-
-    query.push_str(" -j -k ");
-    query.push_str(k.as_str());
-    
-    match t {
-        Some(t) => {query.push_str(" -t "); query.push_str(t.as_str())},
-        None => (),
-    }
-
-    append_path(&mut query, name);
-
-    // for debugging
-    println!("{}", query.as_str());
-
-    let output =Command::new("sh")
-            .arg("-c")
-            .arg(query.as_str())
-            .output()
-            .expect("failed to execute process");
-    let data = output.stdout;
-    
-    format!("{}", String::from_utf8(data).unwrap())
-                    }
-                },
-            }
+        Ok(result) => { 
+            query = result.0;
+            user = result.1;
+            pwd = result.2;
         },
+        Err(e) => return format!("{}", e),
     }
-}
 
-#[get("/secrets/usr/<name>?<pwd>&r&<k>&<t>&<i>", rank=1)]
-fn read(name: String, pwd: Option<String>, k: String, t: Option<String>, i: Option<String>) -> String {
-    let result = db_lookup_user(&name, pwd, false);        
+    let result = db_lookup_user(&user, pwd, false);        
     match result {
         Err(e) => { 
             println!("Error: {}", e);
@@ -79,21 +55,6 @@ fn read(name: String, pwd: Option<String>, k: String, t: Option<String>, i: Opti
                     if !auth {
                         format!("{{\"success\":\"false\", \"e\":\"Incorrect password\"}}")
                     } else {
-                        let mut query = String::from("secrets -r -j -k ");
-                        query.push_str(k.as_str());
-    
-                        match t {
-                            Some(t) => {query.push_str(" -t "); query.push_str(t.as_str())},
-                            None => (),
-                        }
-
-                        match i {
-                            Some(i) => {query.push_str(" -i "); query.push_str(i.as_str())},
-                            None => (),
-                        }
-
-                        append_path(&mut query, name);
-
                         // for debugging
                         println!("{}", query.as_str());
 
@@ -104,7 +65,7 @@ fn read(name: String, pwd: Option<String>, k: String, t: Option<String>, i: Opti
                             .expect("failed to execute process");
                         let data = output.stdout;
     
-                        format!("{}", String::from_utf8(data).unwrap())
+                        format!("{}",String::from_utf8(data).unwrap())
                     }
                 },
             }
@@ -112,59 +73,89 @@ fn read(name: String, pwd: Option<String>, k: String, t: Option<String>, i: Opti
     }
 }
 
-#[get("/secrets/usr/<name>?<pwd>&d&<t>&<i>")]
-fn delete(name: String, pwd: Option<String>, t: Option<String>, i: Option<String>) -> String {
-    let result = db_lookup_user(&name, pwd, false);        
-    match result {
-        Err(e) => { 
-            println!("Error: {}", e);
-            format!("{{\"success\":\"false\", \"e\":\"Error accessing database.\"}}")
-        }, 
-        Ok(val) => { 
-            match val {
-                UserStatus::Created => format!("{{\"success\":\"false\", \"e\":\"Unknown Error\"}}"),
-                UserStatus::DoesNotExist => format!("{{\"success\":\"false\", \"e\":\"User does not exist!\"}}"),
-                UserStatus::Exists(auth) => { 
-                    if !auth {
-                        format!("{{\"success\":\"false\", \"e\":\"Incorrect password\"}}")
-                    } else {
-    let mut query = String::from("secrets -d");
+#[derive(Debug)]
+struct QueryError;
 
-    match t {
-        Some(t) => {query.push_str(" -t "); query.push_str(t.as_str())},
-        None => (),
+impl fmt::Display for QueryError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "Querry Error")
     }
+}
 
-    match i {
-        Some(i) => {query.push_str(" -i "); query.push_str(i.as_str())},
-        None => (),
-    }
+impl Error for QueryError {}
 
-    append_path(&mut query, name);
-
-    // for debugging
-    println!("{}", query.as_str());
-
-    let output =Command::new("sh")
-            .arg("-c")
-            .arg(query.as_str())
-            .output()
-            .expect("failed to execute process");
-    let data = output.stdout;
+fn parse_query_body (body: json::JsonValue) -> Result<(String, String, Option<String>), QueryError> {
+    let mut query = String::from("secrets -j");
     
-    format!("{}", String::from_utf8(data).unwrap())
-                    }
-                },
+    let a = body["action"].as_str();
+    let a = match a {
+        Some(a) => {
+            query.push_str(" -"); 
+            query.push_str(a);
+            let data = body["data"].as_str();
+            match data {
+                Some(data) => {query.push_str(" "); query.push_str(data)},
+                None => {if a=="w" { return Err(QueryError)}},
             }
+            a // Looks funny but this overwrites the option a with a string a 
         },
+        None => return Err(QueryError),
+    };
+
+    let k = body["key"].as_str();
+    match k {
+        Some(k) => {query.push_str(" -k "); query.push_str(k)},
+        None => {if a=="w" || a=="r" {return Err(QueryError)}},
     }
+
+    let i = body["idx"].as_str();
+    match i {
+        Some(i) => {query.push_str(" -i "); query.push_str(i)},
+        None => (),
+    }
+
+    let t = body["tag"].as_str();
+    match t {
+        Some(t) => {query.push_str(" -t "); query.push_str(t)},
+        None => (),
+    }
+
+    let user = body["usr"].as_str();
+    let user = match user {
+        Some(user) => {append_path(&mut query, String::from(user)); String::from(user)},
+        None => return Err(QueryError),
+    };
+
+    let pwd = body["pwd"].as_str();
+    let pwd = match pwd {
+        Some(pwd) => Some(String::from(pwd)),
+        None => None,
+    };
+
+    let result = (query, user, pwd);
+    Ok(result)
 }
 
+#[post("/secrets/new", format = "application/json", data="<body>")]
+fn create_user(body: String) -> String { 
+    let body = json::parse(body.as_str());
+    let body = match body {
+        Ok(body) => body,
+        Err(_e) => return String::from("Bad json in post"),
+    };
 
+    let result = parse_create_body(body);
+    let (user, pwd);
 
-#[get("/secrets/new?<name>&<pwd>")]
-fn create_user(name: String, pwd: Option<String>) -> String { 
-    let result = db_lookup_user(&name, pwd, true);        
+    match result {
+        Ok(result) => { 
+            user = result.0;
+            pwd = result.1;
+        },
+        Err(e) => return format!("{}", e),
+    }
+
+    let result = db_lookup_user(&user, pwd, true);        
     match result {
         Ok(val) => { 
             match val {
@@ -180,6 +171,23 @@ fn create_user(name: String, pwd: Option<String>) -> String {
     }
 }
 
+fn parse_create_body (body: json::JsonValue) -> Result<(String, Option<String>), QueryError> {
+    let user = body["usr"].as_str();
+    let user = match user {
+        Some(user) => String::from(user),
+        None => return Err(QueryError),
+    };
+
+    let pwd = body["pwd"].as_str();
+    let pwd = match pwd {
+        Some(pwd) => Some(String::from(pwd)),
+        None => None,
+    };
+
+    let result = (user, pwd);
+    Ok(result)
+}
+
 enum UserStatus {
     Exists(bool),
     Created,
@@ -187,7 +195,7 @@ enum UserStatus {
 }
 
 fn db_lookup_user(usr: &String, pwd: Option<String>, create: bool) -> Result<UserStatus, mongodb::error::Error> {
-    let client = Client::with_uri_str("mongodb+srv://lewesche:1234@cluster0.e6ckn.mongodb.net/secrets?retryWrites=true&w=majority")?;
+    let client = Client::with_uri_str(DB_AUTH)?;
     let result = client.database("secrets").collection("users").find_one(doc! { "usr": usr.as_str() }, None)?;
         match result {
             Some(document) => {
@@ -219,8 +227,6 @@ fn db_lookup_user(usr: &String, pwd: Option<String>, create: bool) -> Result<Use
 }
 
 fn db_create_user(cli: &Client, usr: &String, pwd: Option<String>) -> Result<(), mongodb::error::Error> {
-    //let client = Client::with_uri_str("mongodb+srv://lewesche:1234@cluster0.e6ckn.mongodb.net/secrets?retryWrites=true&w=majority")?;
-
     let doc;
     match pwd {
         Some(pwd) => doc = doc! { "usr": usr.as_str(), "sum": pwd.as_str() },
@@ -231,40 +237,9 @@ fn db_create_user(cli: &Client, usr: &String, pwd: Option<String>) -> Result<(),
     cli.database("secrets").collection("users").insert_one(doc, None)?;
 
     Ok(())
-
 }
 
 fn main() {
-    /*
-    let usr =String::from("testusr_password");
-    let pwd = String::from("1234");
-
-    let result = db_check_user(&usr, Some(&pwd), false);        
-    match result {
-        Ok(val) => { 
-            match val {
-                UserStatus::Exists(auth) => println!("exists, authenticated: {}", auth),
-                UserStatus::DoesNotExist => println!("does not exist"),
-            }
-        }
-        Err(e) => {
-            println!("database error: {}", e);
-        }
-    }
-
-    let new_usr =String::from("new_testusr");
-    let new_pwd = String::from("5678");
-    db_check_user(&new_usr, Some(&new_pwd), true); 
-
-    let another_usr =String::from("another_testusr");
-    db_check_user(&another_usr, None, true); 
-    */
-    
-    rocket::ignite().mount("/", routes![read, write, delete, create_user]).launch();
+    rocket::ignite().mount("/", routes![create_user, query]).launch();
 }
-
-
-
-
-
 
