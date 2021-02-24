@@ -4,30 +4,37 @@ function clicked_new_user() {
 	usr = document.getElementById('usr_txt').value;
 	pwd = document.getElementById('pwd_txt').value;
 
-	let url = "/secrets/new?name=" + usr + "&pwd=" + pwd; 
+	body = {};
+	body.usr = usr;
+	if(pwd != "")
+		body.pwd = pwd;
+
+	let url = "/secrets/new"; 
 
 	let xhr = new XMLHttpRequest();
-	xhr.open("GET", url, true);
+	xhr.open("POST", url, true);
+	xhr.setRequestHeader('Content-Type', 'application/json; charset=UTF-8');
 	xhr.onload = function (e) {
   		if (xhr.readyState === 4) {
     		if (xhr.status === 200) {
-			let obj = JSON.parse(xhr.responseText);
 			console.log(xhr.responseText);
+			let obj = JSON.parse(xhr.responseText);
 			if(obj.success == "true") {
 				setNotify("New user " + usr + " created")
+			} else if(obj.hasOwnProperty("e")) {
+				setError(obj.e);
 			} else {
-				setError(obj);
+				setError("Failed with unknown error");
 			}
-
     		} else {
-      			console.error(xhr.statusText);
+			setError("HTTP error: " + xhr.statusText);
     		}
   		}
 	};
 	xhr.onerror = function (e) {
-  		console.error(xhr.statusText);
+		setError("HTTP error: " + xhr.statusText);
 	};
-	xhr.send(null); 
+	xhr.send(JSON.stringify(body)); 
 }
 
 function clicked_go() {
@@ -49,62 +56,71 @@ function send_query(action) {
 	dec = document.getElementById('dec_txt').value;
 	pwd = document.getElementById('pwd_txt').value;
 
-	let url = "/secrets/usr/" + usr + "?" + action; 
+	body = {};
 
-	if(action=="w") {
-		if(dec){
-			url+= "=" + dec;
-		} else {
-			return;
-		}
-	}
+	body.action = action;
 
-	if(pwd != "") {
-		url += "&pwd=" + pwd;
-	}
+	if(action=="w")
+		if(dec !="")
+			body.data = dec;
+
+	if(usr!="")
+		body.usr = usr;
+
+	if(pwd != "") 
+		body.pwd = pwd;
 
 	if(action=="r" || action=="w") 
-		url += "&k=" + key;
+		body.key = key;
 
-	if(tag)
-		url += "&t=" + tag;
+	if(tag!="")
+		body.tag = tag;
 
-	if(action!="w" && idx)
-		url += "&i=" + idx;
+	if(action!="w" && idx!="")
+		body.idx = idx;
 
 	clear_fields();
-	request(url, action);
+	request(body);
 }
 
-function request(url) {
-	console.log("url = " + url)
+function request(body) {
+	let url = "/secrets/usr"; 
+	console.log(body);
 
 	let xhr = new XMLHttpRequest();
-	xhr.open("GET", url, true);
+	xhr.open("POST", url, true);
+	xhr.setRequestHeader('Content-Type', 'application/json; charset=UTF-8');
 	xhr.onload = function (e) {
   		if (xhr.readyState === 4) {
     		if (xhr.status === 200) {
 				try {
-					let obj = JSON.parse(xhr.responseText);
 					console.log(xhr.responseText);
-					if(!obj.hasOwnProperty("e")) {
-						setTable(obj);
+					let obj = JSON.parse(xhr.responseText);					
+					if(obj.success=="true") {
+						if(body.action == "r") {
+							setTable(obj.secrets);
+						} else {
+							send_query("r");
+						}
+					} else if(obj.hasOwnProperty("e")) {
+						setError(obj.e);
 					} else {
-						setError(obj);
+						setError("Unknown Error");
 					}
-
 				} catch(e) { // valid delete and write responses return invalid json - prompting a recursive read
-					send_query("r");
+					setError(e);
+					console.log("bad json: " + xhr.responseText + e);
 				}
     		} else {
-      			console.error(xhr.statusText);
+			setError("HTTP error: " + xhr.statusText);
     		}
   		}
 	};
 	xhr.onerror = function (e) {
   		console.error(xhr.statusText);
+		setError("HTTP error: " + xhr.statusText);
 	};
-	xhr.send(null); 
+	xhr.send(JSON.stringify(body)); 
 }
 
 function setNotify(str) {
@@ -113,10 +129,10 @@ function setNotify(str) {
 	ele.innerHTML = str;
 }
 
-function setError(obj) {
+function setError(e) {
 	ele = document.getElementById("error");
 	ele.style.display = "block";
-	ele.innerHTML = obj.e;
+	ele.innerHTML = e;
 }
 
 function setTable(obj) {

@@ -56,7 +56,7 @@ fn query(body: String) -> String {
                         format!("{{\"success\":\"false\", \"e\":\"Incorrect password\"}}")
                     } else {
                         // for debugging
-                        println!("{}", query.as_str());
+                        //println!("{}", query.as_str());
 
                         let output =Command::new("sh")
                             .arg("-c")
@@ -64,8 +64,9 @@ fn query(body: String) -> String {
                             .output()
                             .expect("failed to execute process");
                         let data = output.stdout;
-    
-                        format!("{}",String::from_utf8(data).unwrap())
+                        
+                        let result = String::from_utf8(data).unwrap();
+                        format!("{}",result)
                     }
                 },
             }
