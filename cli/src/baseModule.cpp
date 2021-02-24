@@ -127,7 +127,7 @@ void BaseModule::print_secrets_json(vector<secret*>& vec) {
 }
 
 void BaseModule::print_success_json() {
-	cout << "{\"success\":\"true\",\"e\":\"none\"}" << endl;
+	cout << "{\"success\":\"true\"}" << endl;
 }
 
 void BaseModule::print_success() {
