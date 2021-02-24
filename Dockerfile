@@ -19,5 +19,5 @@ RUN cargo build --manifest-path=backend/Cargo.toml
 #Rocket deploys on port 8000
 EXPOSE 8000
 
-CMD ["cargo", "run", "--manifest-path=backend/Cargo.toml", "--release"]
+CMD ["cargo", "run", "--manifest-path=backend/Cargo.toml"]
 
