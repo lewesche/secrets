@@ -85,7 +85,12 @@ void InteractiveModule::write_secrets() {
     string tag;
     getline(cin, tag);
 
-	base_write(key, dec, tag);
+	int status = base_write(key, dec, tag);
+	if(status == 0) {
+		print_success();
+	} else {
+		print_failure();
+	}
 }
 
 void InteractiveModule::list_secrets() {
@@ -104,7 +109,12 @@ void InteractiveModule::delete_secrets() {
 	int idx;
 	get_targets(tag, idx);
 
-	base_delete(tag, idx);	
+	int status = base_delete(tag, idx);	
+	if(status == 0) {
+		print_success();
+	} else {
+		print_failure();
+	}
 }
 
 int InteractiveModule::run() {

@@ -28,7 +28,20 @@ void HeadlessModule::read_secrets() {
 }
 
 void HeadlessModule::write_secrets() {
-		base_write(key, dec, tag);
+		int status = base_write(key, dec, tag);
+		if(status == 0) {
+			if(json) {
+				print_success_json();
+			} else {
+				print_success();
+			}
+		} else {
+			if(json) {
+				print_failure_json();
+			} else {
+				print_failure();
+			}
+		}
 }
 
 void HeadlessModule::list_secrets() {
@@ -41,7 +54,20 @@ void HeadlessModule::list_secrets() {
 }
 
 void HeadlessModule::delete_secrets() {
-		base_delete(tag, idx);
+		int status = base_delete(tag, idx);
+		if(status == 0) {
+			if(json) {
+				print_success_json();
+			} else {
+				print_success();
+			}
+		} else {
+			if(json) {
+				print_failure_json();
+			} else {
+				print_failure();
+			}
+		}
 }
 
 int HeadlessModule::run() {

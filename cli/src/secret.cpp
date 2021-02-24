@@ -145,11 +145,11 @@ string secret::numstr_2_charstr(const string& numstr) const {
 	return charstr;
 }
 
-void secret::write() const {
+int secret::write() const {
 	ofstream file(fname, std::ios::app);
     if(!file) {
         cerr << "Could not open file" << endl;
-        return;
+        return -1;
     }
 
 	file << tag << endl;	
@@ -166,5 +166,6 @@ void secret::write() const {
 	}
 	file << endl;
 	file.close();
+	return 0;
 }
 

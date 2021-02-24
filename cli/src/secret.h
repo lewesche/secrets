@@ -51,7 +51,7 @@ public:
 	// to handle the case where the encrypted text forms a \n
 	//
 	// Disks are big
-	void write() const;
+	int write() const;
 
 
 private:

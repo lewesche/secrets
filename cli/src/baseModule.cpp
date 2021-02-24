@@ -79,9 +79,10 @@ vector<secret*> BaseModule::base_read(const string& key, const string& target_ta
 	return res;
 }
 
-void BaseModule::base_write(const string& key, const string& dec, const string& tag) {
+int BaseModule::base_write(const string& key, const string& dec, const string& tag) {
     if(dec.empty()) {
         cerr << "Can't write - phrase is empty" << endl << endl;
+		return -2;
     } else {
         secret *s = new secret;
         s->set_key(key);
@@ -89,10 +90,9 @@ void BaseModule::base_write(const string& key, const string& dec, const string& 
         s->set_fname(fname);
         s->set_tag(tag);
 		s->encrypt();
-		s->write();
+		int status = s->write();
 		delete s;
-
-        cout << endl;
+		return status;
     }
 }
 
@@ -108,6 +108,7 @@ void BaseModule::print_secrets(vector<secret*>& vec) {
 }
 
 void BaseModule::print_secrets_json(vector<secret*>& vec) {
+	cout << "{\"success\":\"true\",\"secrets\":";
 	cout << "[";
 
     for(size_t i=0; i<vec.size(); ++i) {
@@ -122,8 +123,25 @@ void BaseModule::print_secrets_json(vector<secret*>& vec) {
 		cout << "\"}";
         delete s;
     }
-    cout << "]" << endl;
+    cout << "]}" << endl;
 }
+
+void BaseModule::print_success_json() {
+	cout << "{\"success\":\"true\"}" << endl;
+}
+
+void BaseModule::print_success() {
+	cout << "success" << endl << endl;
+}
+
+void BaseModule::print_failure_json() {
+	cout << "{\"success\":\"false\", \"e\":\"Failed at cli level\"}" << endl;
+}
+
+void BaseModule::print_failure() {
+	cout << "failed" << endl << endl;
+}
+
 
 vector<secret*> BaseModule::base_list(const string& target_tag, const int target_idx) {
 	vector<secret*> res;
@@ -154,11 +172,11 @@ vector<secret*> BaseModule::base_list(const string& target_tag, const int target
 	return res;
 }
 
-void BaseModule::base_delete(const string& target_tag, const int target_idx) {
+int BaseModule::base_delete(const string& target_tag, const int target_idx) {
     ifstream file(fname);
     if(!file) {
         cerr << "  Could not open file" << endl << endl;
-        return;
+        return -1;
     }
 
     string fname_temp = fname + ".tmp";
@@ -186,7 +204,7 @@ void BaseModule::base_delete(const string& target_tag, const int target_idx) {
     temp.close();
     remove(fname.c_str());
     rename(fname_temp.c_str(), fname.c_str());
-    cout << "  Done" << endl << endl;
+	return 0;
 }
 
 void BaseModule::test_path() {

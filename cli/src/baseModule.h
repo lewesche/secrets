@@ -20,10 +20,9 @@ public:
 
 	//base_read allocated memory
 	std::vector<secret*> base_read(const std::string& key, const std::string& target_tag, const int target_idx);
-	void base_write(const std::string& key, const std::string& dec, const std::string& tag);
+	int base_write(const std::string& key, const std::string& dec, const std::string& tag);
 	std::vector<secret*> base_list(const std::string& target_tag, const int target_idx);
-
-	void base_delete(const std::string& target_tag, const int target_idx);
+	int base_delete(const std::string& target_tag, const int target_idx);
 
 	virtual void read_secrets() = 0;
 	virtual void write_secrets() = 0;
@@ -34,6 +33,10 @@ public:
 
 	void print_secrets(std::vector<secret*>& vec);
 	void print_secrets_json(std::vector<secret*>& vec);
+	void print_success();
+	void print_success_json();
+	void print_failure();
+	void print_failure_json();
 
 private:
 	void thd_read();
