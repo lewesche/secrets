@@ -14,10 +14,10 @@ RUN ./install.sh
 RUN rustup default nightly
 RUN rustup override set nightly
 
-RUN cargo build --manifest-path=backend/Cargo.toml
+RUN cargo build --manifest-path=backend/Cargo.toml --release
 
 #Rocket deploys on port 8000
 EXPOSE 8000
 
-CMD ["cargo", "run", "--manifest-path=backend/Cargo.toml"]
+CMD ["cargo", "run", "--manifest-path=backend/Cargo.toml", "--release"]
 

@@ -1,9 +1,11 @@
 #![feature(proc_macro_hygiene, decl_macro)]
+use std::io::Read;
 
-use std::error::Error;
-use std::fmt;
+use rocket::{Outcome, Request, post, Data, routes};
+use rocket::Outcome::*;
+use rocket::data::{self, FromDataSimple};
+use rocket::http::{Status, ContentType};
 
-use rocket::{post, routes};
 use json;
 use std::process::Command;
 use mongodb::{
@@ -14,6 +16,9 @@ use mongodb::{
 const LOCAL_DATA_PATH: &str = " -p /var/secrets_data/";
 const DB_AUTH: &str = "mongodb+srv://lewesche:1234@cluster0.e6ckn.mongodb.net/secrets?retryWrites=true&w=majority";
 
+// DoS guard
+const LIMIT: u64 = 4096;
+
 fn append_path(query: &mut String, name: String) {
     let mut usrpath = String::from(LOCAL_DATA_PATH);
     usrpath.push_str(name.as_str());
@@ -21,27 +26,89 @@ fn append_path(query: &mut String, name: String) {
     query.push_str(usrpath.as_str());
 }
 
-#[post("/secrets/usr", format = "application/json", data="<body>")]
-fn query(body: String) -> String {
-    let body = json::parse(body.as_str());
-    let body = match body {
-        Ok(body) => body,
-        Err(_e) => return String::from("Bad json in post"),
-    };
+struct Query {
+    cmd: String,
+    user: String,
+    pwd: Option<String>
+}
 
-    let result = parse_query_body(body);
-    let (query, user, pwd);
+impl FromDataSimple for Query {
+    type Error = String;
 
-    match result {
-        Ok(result) => { 
-            query = result.0;
-            user = result.1;
-            pwd = result.2;
-        },
-        Err(e) => return format!("{}", e),
+    fn from_data(req: &Request, data: Data) -> data::Outcome<Self, String> {
+        // Ensure the content type is correct before opening the data.
+        let query_ct = ContentType::parse_flexible("application/json");
+        if req.content_type() != query_ct.as_ref() {
+            return Outcome::Forward(data);
+        }
+
+        // Read the data into a String.
+        let mut body = String::new();
+        if let Err(e) = data.open().take(LIMIT).read_to_string(&mut body) {
+            return Failure((Status::InternalServerError, format!("{:?}", e)));
+        }
+        
+        let body = json::parse(body.as_str());
+        let body = match body {
+            Ok(body) => body,
+            Err(e) => return Failure((Status::InternalServerError, format!("{:?}", e))),
+        };
+
+        let mut cmd = String::from("secrets -j");
+
+        let a = body["action"].as_str();
+        let a = match a {
+            Some(a) => {
+                cmd.push_str(" -"); 
+                cmd.push_str(a);
+                let data = body["data"].as_str();
+                match data {
+                    Some(data) => {cmd.push_str(" "); cmd.push_str(data)},
+                    None => if a=="w" {return Failure((Status::InternalServerError, format!(": Write is missing data")))},
+                }
+                a // Looks funny but this overwrites the option a with a string a 
+            },
+            None => return Failure((Status::InternalServerError, format!(": Missing action"))),
+        };
+
+        let k = body["key"].as_str();
+        match k {
+            Some(k) => {cmd.push_str(" -k "); cmd.push_str(k)},
+            None => if a=="w" || a=="r" { return Failure((Status::InternalServerError, format!(": Missing key")))},
+        }
+
+        let i = body["idx"].as_str();
+        match i {
+            Some(i) => {cmd.push_str(" -i "); cmd.push_str(i)},
+            None => (),
+        }
+
+        let t = body["tag"].as_str();
+        match t {
+            Some(t) => {cmd.push_str(" -t "); cmd.push_str(t)},
+            None => (),
+        }
+
+        let user = body["usr"].as_str();
+        let user = match user {
+            Some(user) => {append_path(&mut cmd, String::from(user)); String::from(user)},
+            None => return Failure((Status::InternalServerError, format!(": Missing key"))),
+        };
+
+        let pwd = body["pwd"].as_str();
+        let pwd = match pwd {
+            Some(pwd) => Some(String::from(pwd)),
+            None => None,
+        };
+
+        // Return successfully.
+        Success(Query { cmd, user, pwd })
     }
+}
 
-    let result = db_lookup_user(&user, pwd, false);        
+#[post("/secrets/usr", format = "application/json", data="<body>")]
+fn query(body: Query) -> String {
+    let result = db_lookup_user(&body.user, body.pwd, false);        
     match result {
         Err(e) => { 
             println!("Error: {}", e);
@@ -56,11 +123,11 @@ fn query(body: String) -> String {
                         format!("{{\"success\":\"false\", \"e\":\"Incorrect password\"}}")
                     } else {
                         // for debugging
-                        //println!("{}", query.as_str());
+                        //println!("{}", body.cmd.as_str());
 
                         let output =Command::new("sh")
                             .arg("-c")
-                            .arg(query.as_str())
+                            .arg(body.cmd.as_str())
                             .output()
                             .expect("failed to execute process");
                         let data = output.stdout;
@@ -74,89 +141,54 @@ fn query(body: String) -> String {
     }
 }
 
-#[derive(Debug)]
-struct QueryError;
+struct NewUser {
+    user: String,
+    pwd: Option<String>
+}
 
-impl fmt::Display for QueryError {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "Querry Error")
+impl FromDataSimple for NewUser {
+    type Error = String;
+
+    fn from_data(req: &Request, data: Data) -> data::Outcome<Self, String> {
+        // Ensure the content type is correct before opening the data.
+        let query_ct = ContentType::parse_flexible("application/json");
+        if req.content_type() != query_ct.as_ref() {
+            return Outcome::Forward(data);
+        }
+
+        // Read the data into a String.
+        let mut body = String::new();
+        if let Err(e) = data.open().take(LIMIT).read_to_string(&mut body) {
+            return Failure((Status::InternalServerError, format!("{:?}", e)));
+        }
+        
+        let body = json::parse(body.as_str());
+        let body = match body {
+            Ok(body) => body,
+            Err(e) => return Failure((Status::InternalServerError, format!("{:?}", e))),
+        };
+
+        let user = body["usr"].as_str();
+        let user = match user {
+            Some(user) => String::from(user),
+            None => return Failure((Status::InternalServerError, format!(": Missing key"))),
+        };
+
+        let pwd = body["pwd"].as_str();
+        let pwd = match pwd {
+            Some(pwd) => Some(String::from(pwd)),
+            None => None,
+        };
+
+        // Return successfully.
+        Success(NewUser { user, pwd })
     }
 }
 
-impl Error for QueryError {}
-
-fn parse_query_body (body: json::JsonValue) -> Result<(String, String, Option<String>), QueryError> {
-    let mut query = String::from("secrets -j");
-    
-    let a = body["action"].as_str();
-    let a = match a {
-        Some(a) => {
-            query.push_str(" -"); 
-            query.push_str(a);
-            let data = body["data"].as_str();
-            match data {
-                Some(data) => {query.push_str(" "); query.push_str(data)},
-                None => {if a=="w" { return Err(QueryError)}},
-            }
-            a // Looks funny but this overwrites the option a with a string a 
-        },
-        None => return Err(QueryError),
-    };
-
-    let k = body["key"].as_str();
-    match k {
-        Some(k) => {query.push_str(" -k "); query.push_str(k)},
-        None => {if a=="w" || a=="r" {return Err(QueryError)}},
-    }
-
-    let i = body["idx"].as_str();
-    match i {
-        Some(i) => {query.push_str(" -i "); query.push_str(i)},
-        None => (),
-    }
-
-    let t = body["tag"].as_str();
-    match t {
-        Some(t) => {query.push_str(" -t "); query.push_str(t)},
-        None => (),
-    }
-
-    let user = body["usr"].as_str();
-    let user = match user {
-        Some(user) => {append_path(&mut query, String::from(user)); String::from(user)},
-        None => return Err(QueryError),
-    };
-
-    let pwd = body["pwd"].as_str();
-    let pwd = match pwd {
-        Some(pwd) => Some(String::from(pwd)),
-        None => None,
-    };
-
-    let result = (query, user, pwd);
-    Ok(result)
-}
 
 #[post("/secrets/new", format = "application/json", data="<body>")]
-fn create_user(body: String) -> String { 
-    let body = json::parse(body.as_str());
-    let body = match body {
-        Ok(body) => body,
-        Err(_e) => return String::from("Bad json in post"),
-    };
-
-    let result = parse_create_body(body);
-    let (user, pwd);
-
-    match result {
-        Ok(result) => { 
-            user = result.0;
-            pwd = result.1;
-        },
-        Err(e) => return format!("{}", e),
-    }
-
-    let result = db_lookup_user(&user, pwd, true);        
+fn create_user(body: NewUser) -> String { 
+    let result = db_lookup_user(&body.user, body.pwd, true);        
     match result {
         Ok(val) => { 
             match val {
@@ -170,23 +202,6 @@ fn create_user(body: String) -> String {
             format!("{{\"success\":\"false\", \"e\":\"Error accessing database.\"}}")
         }, 
     }
-}
-
-fn parse_create_body (body: json::JsonValue) -> Result<(String, Option<String>), QueryError> {
-    let user = body["usr"].as_str();
-    let user = match user {
-        Some(user) => String::from(user),
-        None => return Err(QueryError),
-    };
-
-    let pwd = body["pwd"].as_str();
-    let pwd = match pwd {
-        Some(pwd) => Some(String::from(pwd)),
-        None => None,
-    };
-
-    let result = (user, pwd);
-    Ok(result)
 }
 
 enum UserStatus {
