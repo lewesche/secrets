@@ -1,3 +1,4 @@
+const MAX_LEN = 4096;
 
 function clicked_new_user() {
 	clear();
@@ -8,6 +9,13 @@ function clicked_new_user() {
 	body.usr = usr;
 	if(pwd != "")
 		body.pwd = pwd;
+
+	if (JSON.stringify(body).length > MAX_LEN) {
+		clear();
+		setError("Request is too long")
+		return;
+	}
+
 
 	let url = "/secrets/new"; 
 
@@ -80,6 +88,12 @@ function send_query(action) {
 		body.idx = idx;
 
 	clear_fields();
+
+	if (JSON.stringify(body).length > MAX_LEN) {
+		setError("Request is too long")
+		return;
+	}
+
 	request(body);
 }
 
