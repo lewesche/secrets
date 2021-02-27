@@ -13,6 +13,9 @@ use mongodb::{
     sync::Client,
 };
 
+mod checksum;
+use crate::checksum::get_checksum;
+
 const LOCAL_DATA_PATH: &str = " -p /var/secrets_data/";
 const DB_AUTH: &str = "mongodb+srv://lewesche:1234@cluster0.e6ckn.mongodb.net/secrets?retryWrites=true&w=majority";
 
@@ -218,7 +221,8 @@ fn db_lookup_user(usr: &String, pwd: Option<String>, create: bool) -> Result<Use
                 if let Some(sum) = document.get("sum").and_then(Bson::as_str) {
                     match pwd {
                         Some(pwd) => {
-                            if sum == pwd.as_str() {
+                            if sum == get_checksum(&usr, &pwd).to_string() {
+                            //if sum == pwd.as_str() {
                                 return Ok(UserStatus::Exists(true))
                             } else {
                                 return Ok(UserStatus::Exists(false))
@@ -245,7 +249,7 @@ fn db_lookup_user(usr: &String, pwd: Option<String>, create: bool) -> Result<Use
 fn db_create_user(cli: &Client, usr: &String, pwd: Option<String>) -> Result<(), mongodb::error::Error> {
     let doc;
     match pwd {
-        Some(pwd) => doc = doc! { "usr": usr.as_str(), "sum": pwd.as_str() },
+        Some(pwd) => doc = doc! { "usr": usr.as_str(), "sum": get_checksum(&usr, &pwd).to_string() },
         None => doc = doc! { "usr": usr.as_str() },
     }
 
