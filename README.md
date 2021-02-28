@@ -1,11 +1,26 @@
 # secrets
-Simple tool for storing passwords or anything else you'd like to encrypt. 
+A simple tool for storing passwords or anything else you'd like to encrypt - without the risk of your data leaking. No "master password" data is ever stored. No "secrets" are stored in an unencrypted form.
 
-No "master password" data is ever stored. When you want to store a new "secret", you provide a key that is used to encrypt the secret phrase. When you want to read back a secret, provide the same key to decript it. 
+The project started as a CLI tool written in C++. I'm currently working on a browser version in Rust, which will operate slightly differently and currently is in somehwat of a in between state. 
 
-## Installation
+# Browser App
 
-### With Homebrew
+The browser app is running here: [secrets](https://lewesche.com/secrets.html)
+
+The browser app requires a <username, password> pair for authenticaiton, but only the username is stored. Usernames + passwords are used to compute a "checksum" which cannot be reversed into the original password. Checksums are computed via a two step process. First, character values from the two strings are linearly combined into a single 64 bit value. Next this 64 bit value is used to seed a CSPRNG. The first value taken from the random number generator is the checksum. 
+
+It's still using the C++ program to handle encryption/decryption. The CLI tool uses keys (different than passwords) to encrypt/decrypt. Each "secret" stored can have a different key. Keys are used to encrpyt/decrypt via a caeser cipher. 
+
+The plan is to rebuild the caeser cipher part in Rust to 1) drop the use of keys to simplify the application with just the password, 2) incorperate CSPRNG random numberrs in the encryption process and 3) speed up the program.  
+
+# CLI version
+This is the first version of the project. Currently the browser version still uses the CLI tool to encrypt/decypt.
+
+When you want to store a new "secret", you provide a key that is used to encrypt the secret phrase. When you want to read back a secret, provide the same key to decript it. 
+
+## CLI Installation
+
+### With Homebrew **currently broken
 ```
 brew tap lewesche/secrets
 brew install secrets
@@ -25,7 +40,7 @@ Then run from anywhere with `secrets`
 
 Before compiling with `make`, there are macros you can change within secret.h to modify the encryption/decryption algorithm in your binary. See the file for details. 
 
-## Usage
+## CLI Usage
 The first time it's run a file will be created in your home directory called `.secrets.txt`. This is where encrypted text and optionally unencrypted tags are stored. It might be a good idea to save a backup copy of this file. 
 
 ### h : show all commands
