@@ -65,3 +65,38 @@ pub fn get_checksum(s1: &String, s2: &String) -> u128 {
     rng.gen_range(0..u128::MAX)
 }
 
+
+// Functions to encode/decode given a <username, password>
+// Just a caesar cipher with CSPRNG shifts
+fn encode(s1: &String, s2: &String, dec: &String) -> Vec<u8> {
+    // add length so that different secrets for the same user will (often) have different hashes
+    let hash = hash_strings(&s1, &s2) + (dec.len() as u64);
+    let mut rng = rand_hc::Hc128Rng::seed_from_u64(hash);
+
+    let dec = dec.as_bytes();
+    let mut enc: Vec<u8> = Vec::new();
+
+    for i in 0..dec.len() {
+        let c = Wrapping(dec[i]) + Wrapping(rng.gen_range(0..u8::MAX));
+        enc.push(c.0);
+    }
+    enc
+}
+fn decode(s1: &String, s2: &String, enc: &Vec<u8>) -> String {
+    // add length so that different secrets for the same user will (often) have different hashes
+    let hash = hash_strings(&s1, &s2) + (enc.len() as u64);
+    let mut rng = rand_hc::Hc128Rng::seed_from_u64(hash);
+
+    let mut dec: Vec<u8> = Vec::new();
+
+    for i in 0..enc.len() {
+        let c = Wrapping(enc[i]) - Wrapping(rng.gen_range(0..u8::MAX));
+        if c.0<32 || c.0>126 {
+            dec.push(63); // 63=='?'
+        } else {
+            dec.push(c.0);
+        }
+    }
+    String::from_utf8(dec).unwrap()
+}
+
