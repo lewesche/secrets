@@ -68,7 +68,7 @@ pub fn get_checksum(s1: &String, s2: &String) -> u128 {
 
 // Functions to encode/decode given a <username, password>
 // Just a caesar cipher with CSPRNG shifts
-fn encode(s1: &String, s2: &String, dec: &String) -> Vec<u8> {
+pub fn encode(s1: &String, s2: &String, dec: &String) -> Vec<u8> {
     // add length so that different secrets for the same user will (often) have different hashes
     let hash = hash_strings(&s1, &s2) + (dec.len() as u64);
     let mut rng = rand_hc::Hc128Rng::seed_from_u64(hash);
@@ -82,7 +82,8 @@ fn encode(s1: &String, s2: &String, dec: &String) -> Vec<u8> {
     }
     enc
 }
-fn decode(s1: &String, s2: &String, enc: &Vec<u8>) -> String {
+
+pub fn decode(s1: &String, s2: &String, enc: &Vec<u8>) -> Vec<u8> {
     // add length so that different secrets for the same user will (often) have different hashes
     let hash = hash_strings(&s1, &s2) + (enc.len() as u64);
     let mut rng = rand_hc::Hc128Rng::seed_from_u64(hash);
@@ -97,6 +98,6 @@ fn decode(s1: &String, s2: &String, enc: &Vec<u8>) -> String {
             dec.push(c.0);
         }
     }
-    String::from_utf8(dec).unwrap()
+    dec
 }
 
