@@ -1,4 +1,4 @@
 To run container: 
 <somewhere> is the dir to store data
 
-sudo docker run --name secrets -v <somewhere>/secrets_data:/var/secrets_data --rm -it -p 8000:8000 <imageID>
+sudo docker run --name secrets --rm -it -p 8000:8000 <imageID>

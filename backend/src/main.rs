@@ -132,8 +132,8 @@ fn query(query: Query) -> String {
         }, 
         Ok(status) => { 
             match status {
-                QueryStatus::Fail(res) => format!("{{\"success\":\"false\", \"e\":\"{}\"}}", res), 
-                QueryStatus::Success(res) => format!("{{\"success\":\"true\", \"res\":\"{}\"}}", res), 
+                QueryStatus::Fail(res) => format!("{{\"success\":\"false\", \"e\":{}}}", res), 
+                QueryStatus::Success(res) => format!("{{\"success\":\"true\", \"res\":{}}}", res), 
             }
         },
     }
@@ -149,8 +149,8 @@ fn create_user(query: Query) -> String {
         }, 
         Ok(status) => { 
             match status {
-                QueryStatus::Fail(res) => format!("{{\"success\":\"false\", \"e\":\"{}\"}}", res), 
-                QueryStatus::Success(res) => format!("{{\"success\":\"true\", \"res\":\"{}\"}}", res), 
+                QueryStatus::Fail(res) => format!("{{\"success\":\"false\", \"e\":{}}}", res), 
+                QueryStatus::Success(res) => format!("{{\"success\":\"true\", \"res\":{}}}", res), 
             }
         },
     }
@@ -168,16 +168,15 @@ fn db_query(query: &Query) -> Result<QueryStatus, mongodb::error::Error> {
                     Some(pwd) => {
                         if sum == get_checksum(&query.user, &pwd).to_string() {
                             // passwords match
-                            //return Ok(QueryStatus::Success(String::from("Found user, passwords match")))
                             return dispatch_query(&query, &client, &lookup, true)
                         } else {
                             // passwords do not match
-                            return Ok(QueryStatus::Fail(String::from("Found user, passwords don't match")))
+                            return Ok(QueryStatus::Fail(String::from("\"Found user, passwords don't match\"")))
                         }
                     },
                     None => {
                         // no password provided, but one is expected
-                        return Ok(QueryStatus::Fail(String::from("User expects a password, none provided")));
+                        return Ok(QueryStatus::Fail(String::from("\"User expects a password, none provided\"")));
                     },  
                 }
             } else {
@@ -191,7 +190,7 @@ fn db_query(query: &Query) -> Result<QueryStatus, mongodb::error::Error> {
             // no user found
             match query.action {
                 Action::Create => db_create_user(&query, &client),
-                _ => Ok(QueryStatus::Fail(String::from("No user found"))),
+                _ => Ok(QueryStatus::Fail(String::from("\"No user found\""))),
             }
         },
     }
@@ -207,7 +206,7 @@ fn db_create_user(query: &Query, client: &Client) -> Result<QueryStatus, mongodb
     println!("new user: {}", doc);
     client.database("secrets").collection("users").insert_one(doc, None)?;
 
-    Ok(QueryStatus::Success(String::from("New user created")))
+    Ok(QueryStatus::Success(String::from("\"New user created\"")))
 }
 
 fn dispatch_query(query: &Query, client: &Client, lookup: &mongodb::bson::Document, pwd_protected: bool) -> Result<QueryStatus, mongodb::error::Error> {
@@ -215,8 +214,8 @@ fn dispatch_query(query: &Query, client: &Client, lookup: &mongodb::bson::Docume
         Action::Read => return db_read(&query, &lookup, pwd_protected),
         Action::Write => return db_write(&query, &client, pwd_protected),
         Action::Delete => return db_delete(&query, &client),
-        Action::Create => Ok(QueryStatus::Fail(String::from("User already exists"))),
-        Action::Unknown => Ok(QueryStatus::Fail(String::from("Unknown action"))),
+        Action::Create => Ok(QueryStatus::Fail(String::from("\"User already exists\""))), // Should have found user already
+        Action::Unknown => Ok(QueryStatus::Fail(String::from("\"Unknown action\""))),
     }
 }
 
@@ -274,15 +273,20 @@ fn db_delete(query: &Query, cli: &Client) -> Result<QueryStatus, mongodb::error:
     }
 
 
-    let mut msg = String::from("Modified count = ");
+    let mut msg = String::from("\"Modified count = ");
     msg.push_str(c.to_string().as_str());
+    msg.push_str("\"");
     Ok(QueryStatus::Success(String::from(msg)))
 }
 
 fn db_write(query: &Query, cli: &Client, pwd_protected: bool) -> Result<QueryStatus, mongodb::error::Error> {
     match &query.data {
-        Some(_data) => (),
-        None => return Ok(QueryStatus::Fail("Missing data to write".to_string())),
+        Some(data) => {
+            if data.len() == 0 {
+                return Ok(QueryStatus::Fail("\"Missing data to write\"".to_string()));
+            }
+        },
+        None => return Ok(QueryStatus::Fail("\"Missing data to write\"".to_string())),
     }
 
     let secret = encode_secret(query, pwd_protected);
@@ -301,12 +305,14 @@ fn db_write(query: &Query, cli: &Client, pwd_protected: bool) -> Result<QuerySta
     
     let c = res.modified_count; 
     if c == 1 {
-        let mut msg = String::from("Modified count = ");
+        let mut msg = String::from("\"Modified count = ");
         msg.push_str(c.to_string().as_str());
+        msg.push_str("\"");
         Ok(QueryStatus::Success(String::from(msg)))
     } else {
-        let mut msg = String::from("Something went wrong with write. Modified count = ");
+        let mut msg = String::from("\"Something went wrong with write. Modified count = ");
         msg.push_str(c.to_string().as_str());
+        msg.push_str("\"");
         Ok(QueryStatus::Fail(msg))
     }
 }

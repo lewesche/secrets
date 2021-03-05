@@ -1,11 +1,47 @@
 const MAX_LEN = 4096;
 
+function init() {
+	let about = document.getElementById('about');
+        let title = document.createElement("h2");
+        title.innerHTML = "- About";
+        title.classList.add("left", "dropDown");
+        about.append(title);
+
+	let inner = document.createElement("div");
+	
+	let txt = document.createElement("p");
+	txt.innerHTML = "explain"
+	inner.append(txt);
+	
+	let diagram = document.createElement("img");
+	diagram.src="pup.jpg";
+	inner.append(diagram);
+
+
+        about.append(inner);
+
+	$(".dropDown").click(function(){
+		let curr = this.innerHTML;
+		if(curr[0] == '+') {
+			curr = curr.replace('+', '-');
+		} else if (curr[0] == '-') {
+			curr = curr.replace('-', '+');
+		}
+		this.innerHTML = curr;
+		//var oldWidth = $(this.nextSibling).width();
+		//$(this.nextSibling).slideToggle(200, () => {$(this).width(oldWidth);} );
+		$(this.nextSibling).slideToggle(200, () => {200;} );
+
+	});
+}
+
 function clicked_new_user() {
 	clear();
 	usr = document.getElementById('usr_txt').value;
 	pwd = document.getElementById('pwd_txt').value;
 
 	body = {};
+	body.action = "c";
 	body.usr = usr;
 	if(pwd != "")
 		body.pwd = pwd;
@@ -57,7 +93,6 @@ function clicked_go() {
 }
 
 function send_query(action) {
-	key = document.getElementById('key_txt').value;
 	idx = document.getElementById('idx_txt').value;
 	tag = document.getElementById('tag_txt').value;
 	usr = document.getElementById('usr_txt').value;
@@ -77,9 +112,6 @@ function send_query(action) {
 
 	if(pwd != "") 
 		body.pwd = pwd;
-
-	if(action=="r" || action=="w") 
-		body.key = key;
 
 	if(tag!="")
 		body.tag = tag;
@@ -112,8 +144,9 @@ function request(body) {
 					let obj = JSON.parse(xhr.responseText);					
 					if(obj.success=="true") {
 						if(body.action == "r") {
-							setTable(obj.secrets);
+							setTable(obj.res);
 						} else {
+							// Read again to get an updated table
 							send_query("r");
 						}
 					} else if(obj.hasOwnProperty("e")) {
@@ -155,14 +188,14 @@ function setTable(obj) {
 	html_txt += "<tr>" + "<th>idx</th>" + "<th>tag</th>" + "<th>text</th>" + "</tr>";
 	for(i=0; i<obj.length; i++) {
 		html_txt += "<tr>"
-		html_txt += "<td>" + obj[i].idx + "</td>";	
+		html_txt += "<td>" + i + "</td>";	
 		html_txt += "<td>";	
 		if(obj[i].hasOwnProperty('tag')){
 			html_txt += obj[i].tag;	
 		}
 		html_txt += "</td>";	
 
-		html_txt += "<td>" + obj[i].dec + "</td>";	
+		html_txt += "<td>" + obj[i].enc + "</td>";	
 		html_txt += "</tr>"
 	}
 	html_txt += "</table>";
@@ -189,7 +222,6 @@ function clearTable() {
 }
 
 function clear_fields() {
-	//document.getElementById('key_txt').value = "";
 	document.getElementById('idx_txt').value = "";
 	document.getElementById('tag_txt').value = "";
 	document.getElementById('dec_txt').value = "";
