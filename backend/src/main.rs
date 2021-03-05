@@ -27,6 +27,7 @@ enum Action {
     Write,
     Delete,
     Create,
+    Unknown,
 }
 
 struct Query {
@@ -36,7 +37,6 @@ struct Query {
     data: Option<String>,
     tag: Option<String>,
     idx: Option<usize>,
-    result: String
 }
 
 impl FromDataSimple for Query {
@@ -69,27 +69,22 @@ impl FromDataSimple for Query {
                     "w" => Action::Write,
                     "d" => Action::Delete,
                     "c" => Action::Create,
-                    _ => return Failure((Status::InternalServerError, format!(": Action not recognized"))),
+                    _ => Action::Unknown, 
                 }
             },
-            None => return Failure((Status::InternalServerError, format!(": Missing action"))),
+            None => Action::Unknown,
         };
 
         let data = body["data"].as_str();
         let data = match data {
             Some(data) => Some(String::from(data)),
-            None => {
-                match action {
-                    Action::Write => {return Failure((Status::InternalServerError, format!(": Write is missing data")))},
-                    _ => None,
-                }
-            },
+            None => None,
         };
 
         let user = body["usr"].as_str();
         let user = match user {
             Some(user) => String::from(user),
-            None => return Failure((Status::InternalServerError, format!(": Missing user"))),
+            None => return Failure((Status::InternalServerError, format!(": Missing User"))),
         };
 
         let pwd = body["pwd"].as_str();
@@ -117,10 +112,8 @@ impl FromDataSimple for Query {
             None => None,
         };
 
-        let result = String::new();
-
         // Return successfully.
-        Success(Query { user, pwd, action, data, tag, idx, result})
+        Success(Query { user, pwd, action, data, tag, idx})
     }
 }
 
@@ -207,8 +200,8 @@ fn db_query(query: &Query) -> Result<QueryStatus, mongodb::error::Error> {
 fn db_create_user(query: &Query, client: &Client) -> Result<QueryStatus, mongodb::error::Error> {
     let doc;
     match &query.pwd {
-        Some(pwd) => doc = doc! { "usr": query.user.as_str(), "sum": get_checksum(&query.user, &pwd).to_string() },
-        None => doc = doc! { "usr": query.user.as_str() },
+        Some(pwd) => doc = doc! { "usr": query.user.as_str(), "sum": get_checksum(&query.user, &pwd).to_string(), "secrets":[] },
+        None => doc = doc! { "usr": query.user.as_str(), "secrets":[] },
     }
 
     println!("new user: {}", doc);
@@ -220,7 +213,9 @@ fn db_create_user(query: &Query, client: &Client) -> Result<QueryStatus, mongodb
 fn dispatch_query(query: &Query, client: &Client, lookup: &mongodb::bson::Document, pwd_protected: bool) -> Result<QueryStatus, mongodb::error::Error> {
     match query.action {
        Action::Read => return db_read(&query, &lookup, pwd_protected),
-       _ => Ok(QueryStatus::Fail(String::from("User already exists")))
+       Action::Write => return db_write(&query, &client, pwd_protected),
+       Action::Create => Ok(QueryStatus::Fail(String::from("User already exists"))),
+       _ => Ok(QueryStatus::Fail(String::from("Unknown action"))),
     }
 }
 
@@ -239,10 +234,53 @@ struct Secret {
     tag: Option<String>
 }
 
+fn db_write(query: &Query, cli: &Client, pwd_protected: bool) -> Result<QueryStatus, mongodb::error::Error> {
+    match &query.data {
+        Some(_data) => (),
+        None => return Ok(QueryStatus::Fail("Missing data to write".to_string())),
+    }
+
+    let secret = encode_secret(query, pwd_protected);
+    let mut enc: Vec<u32> = Vec::new();
+    for e in secret.data {
+        enc.push(e.into());
+    }
+
+    let update = match secret.tag {
+        Some(tag) => doc! {"$push": {"secrets": { "tag": tag, "enc": enc } }},
+        None => doc! {"$push": {"secrets": { "enc": enc } }},
+    };
+ 
+    let filter = doc! { "usr": query.user.as_str()};
+    let res = cli.database("secrets").collection("users").update_one(filter, update, None)?; 
+    
+    let c = res.modified_count; 
+    if c == 1 {
+        Ok(QueryStatus::Success(String::new()))
+    } else {
+        let mut msg = String::from("Something went wrong with write. Modified count = ");
+        msg.push_str(c.to_string().as_str());
+        Ok(QueryStatus::Fail(msg))
+    }
+}
+
+fn encode_secret(query: &Query, pwd_protected: bool) -> Secret { 
+    let data = match pwd_protected {
+        true => {
+            let pwd = query.pwd.as_ref().unwrap();
+            let dec = query.data.as_ref().unwrap();
+            encode(&query.user, &pwd, &dec)
+        },
+        false => query.data.as_ref().unwrap().as_bytes().to_vec(),
+    };
+    let tag = query.tag.clone();
+    Secret {data, tag}
+}
+
 // If thers is no password associated with the account, the user may still pass one in. Don't want
 // to use that to decrypt, so this bool checks that. 
 fn db_read(query: &Query, lookup: &mongodb::bson::Document, pwd_protected: bool) -> Result<QueryStatus, mongodb::error::Error> {
-    let mut secrets = doc_2_secrets(&query, &lookup);
+    let mut secrets = doc_2_secrets(&lookup);
     secrets = filter(secrets, &query.tag, &query.idx);
 
     if pwd_protected {
@@ -252,7 +290,7 @@ fn db_read(query: &Query, lookup: &mongodb::bson::Document, pwd_protected: bool)
     Ok(QueryStatus::Success(String::from(json::stringify(secrets))))
 }
 
-fn doc_2_secrets(query: &Query, lookup: &mongodb::bson::Document) -> Vec<Secret> {
+fn doc_2_secrets(lookup: &mongodb::bson::Document) -> Vec<Secret> {
     let mut result: Vec<Secret> = Vec::new();
     
     // Read everything out of this annoying bson format
@@ -322,7 +360,6 @@ fn filter(secrets: Vec<Secret>, tag: &Option<String>, idx: &Option<usize>) -> Ve
     let idx = match idx {
         Some(idx) => {
             filter_idx = true;
-            println!("idx: {}", idx);
             *idx
         },
         None => 0,
@@ -368,7 +405,6 @@ fn decode_secrets(secrets: Vec<Secret>, user: &String, pwd: &Option<String>) -> 
         let tag = s.tag;
         result.push(Secret{data, tag});
     };
-
     result
 }
 
