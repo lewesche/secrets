@@ -18,7 +18,6 @@ void InteractiveModule::print_help() {
     cout << "  h \t show all commands" << endl;
     cout << "  r \t read all secret(s) by tag or numerical index" << endl;
     cout << "  w \t write new secret" << endl;
-    cout << "  l \t list all tags/indicies" << endl;
     cout << "  d \t delete secret(s) by tag or index" << endl << "    \t   does nothing if no matches are found" << endl;
     cout << "  p \t use new path to secrets file" << endl << "    \t   creates a new file if the file is not found" << endl;
     cout << "  q \t quit" << endl << endl;
@@ -93,17 +92,6 @@ void InteractiveModule::write_secrets() {
 	}
 }
 
-void InteractiveModule::list_secrets() {
-	string tag; 
-	int idx;
-	get_targets(tag, idx);
-
-    cout << "  " << "idx" << '\t' << "tag" << endl;
-
-	vector<secret*> res = base_list(tag, idx);	
-	print_secrets(res);
-}
-
 void InteractiveModule::delete_secrets() {
 	string tag; 
 	int idx;
@@ -138,9 +126,6 @@ int InteractiveModule::run() {
                 break;
             case 'w':
                 write_secrets();
-                break;
-            case 'l':
-                list_secrets();
                 break;
             case 'd':
                 delete_secrets();

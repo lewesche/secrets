@@ -44,15 +44,6 @@ void HeadlessModule::write_secrets() {
 		}
 }
 
-void HeadlessModule::list_secrets() {
-		vector<secret*> res = base_list(tag, idx);
-		if(json) {
-			print_secrets_json(res);
-		} else {
-			print_secrets(res);
-		}
-}
-
 void HeadlessModule::delete_secrets() {
 		int status = base_delete(tag, idx);
 		if(status == 0) {
@@ -94,12 +85,6 @@ int HeadlessModule::run() {
 					dec += argv[i+1];
 					++i;
 				}
-                break;
-            case 'l':
-				if(q != INVAL) {
-					return -1;
-				}
-				q = LIST;
                 break;
             case 'd':
 				if(q != INVAL) {
@@ -154,9 +139,6 @@ int HeadlessModule::run() {
 		break;
 	case WRITE:
 		write_secrets();
-		break;
-	case LIST:
-		list_secrets();
 		break;
 	case DELETE:
 		delete_secrets();

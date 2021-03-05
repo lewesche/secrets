@@ -7,7 +7,6 @@ public:
 	enum Query {
 		READ,
 		WRITE,
-		LIST,
 		DELETE,
 		INVAL
 	};
@@ -26,7 +25,6 @@ private:
 
 	void read_secrets();
 	void write_secrets();
-	void list_secrets();
 	void delete_secrets();
 
 public:

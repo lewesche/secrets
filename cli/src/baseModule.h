@@ -21,12 +21,10 @@ public:
 	//base_read allocated memory
 	std::vector<secret*> base_read(const std::string& key, const std::string& target_tag, const int target_idx);
 	int base_write(const std::string& key, const std::string& dec, const std::string& tag);
-	std::vector<secret*> base_list(const std::string& target_tag, const int target_idx);
 	int base_delete(const std::string& target_tag, const int target_idx);
 
 	virtual void read_secrets() = 0;
 	virtual void write_secrets() = 0;
-	virtual void list_secrets() = 0;
 	virtual void delete_secrets() = 0;
 
 	void test_path();

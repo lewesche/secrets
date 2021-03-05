@@ -142,36 +142,6 @@ void BaseModule::print_failure() {
 	cout << "failed" << endl << endl;
 }
 
-
-vector<secret*> BaseModule::base_list(const string& target_tag, const int target_idx) {
-	vector<secret*> res;
-    ifstream file(fname);
-    if(!file) {
-        cerr << "  Could not open file" << endl << endl;
-        return res;
-    }
-
- 	size_t i=0;
-    while(!file.eof()) {
-        string tag;
-        getline(file, tag);
-        string enc;
-        getline(file, enc); // not used, but need to skip the line
-        if(!enc.empty()) {
-            if((target_tag.empty() && target_idx==-1) || (!target_tag.empty() && target_tag==tag) || target_idx==i) {
-                secret *s = new secret;
-                s->set_tag(tag);
-                s->set_idx(i);
-				res.push_back(s);
-            }
-            ++i;
-        }
-    }
-
-    file.close();
-	return res;
-}
-
 int BaseModule::base_delete(const string& target_tag, const int target_idx) {
     ifstream file(fname);
     if(!file) {

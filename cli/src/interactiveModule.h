@@ -11,7 +11,6 @@ private:
 	
 	void read_secrets();
 	void write_secrets();
-	void list_secrets();
 	void delete_secrets();
 public:
 	InteractiveModule();
