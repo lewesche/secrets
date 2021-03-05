@@ -98,10 +98,10 @@ impl FromDataSimple for Query {
             Some(idx) => {
                 let idx = idx.parse::<usize>();
                 let idx = match idx {
-                    Ok(idx) => idx,
-                    _ => return Failure((Status::InternalServerError, format!(": Invalid Idx")))
+                    Ok(idx) => Some(idx),
+                    _ => None, 
                 };
-                Some(idx)
+                idx
             },
             None => None,
         };
@@ -212,10 +212,11 @@ fn db_create_user(query: &Query, client: &Client) -> Result<QueryStatus, mongodb
 
 fn dispatch_query(query: &Query, client: &Client, lookup: &mongodb::bson::Document, pwd_protected: bool) -> Result<QueryStatus, mongodb::error::Error> {
     match query.action {
-       Action::Read => return db_read(&query, &lookup, pwd_protected),
-       Action::Write => return db_write(&query, &client, pwd_protected),
-       Action::Create => Ok(QueryStatus::Fail(String::from("User already exists"))),
-       _ => Ok(QueryStatus::Fail(String::from("Unknown action"))),
+        Action::Read => return db_read(&query, &lookup, pwd_protected),
+        Action::Write => return db_write(&query, &client, pwd_protected),
+        Action::Delete => return db_delete(&query, &client),
+        Action::Create => Ok(QueryStatus::Fail(String::from("User already exists"))),
+        Action::Unknown => Ok(QueryStatus::Fail(String::from("Unknown action"))),
     }
 }
 
@@ -234,6 +235,50 @@ struct Secret {
     tag: Option<String>
 }
 
+fn db_delete(query: &Query, cli: &Client) -> Result<QueryStatus, mongodb::error::Error> {
+    let mut c: i64 = 0;
+
+    // Delete by index first - since I'm doing this in two ops (bad) don't
+    // want idx to change by the time it's used
+
+    // Aparently there is no way to delete from a idx value in mongodb???
+    // Workaround/hack is to set the index to null, then delete all nulls.
+    match &query.idx {
+        Some(idx) => {
+            let filter = doc! { "usr": query.user.as_str()};
+
+            // Set null and count the deletes from here
+            let mut array_idx = String::from("secrets.");
+            array_idx.push_str(idx.to_string().as_str());
+            let unset = doc! {"$unset": {array_idx: 0 } };
+            let res = cli.database("secrets").collection("users").update_one(filter, unset, None)?; 
+            c += res.modified_count; 
+
+            // Pull aka delete
+            let filter = doc! { "usr": query.user.as_str()};
+            let unset = doc! {"$pull": {"secrets": null } };
+            cli.database("secrets").collection("users").update_one(filter, unset, None)?; 
+
+        },
+        None => (),
+    }
+
+    match &query.tag {
+        Some(tag) => {
+            let filter = doc! { "usr": query.user.as_str()};
+            let pull = doc! {"$pull": {"secrets": {"tag": tag} }};
+            let res = cli.database("secrets").collection("users").update_one(filter, pull, None)?; 
+            c += res.modified_count; 
+        },
+        None => (),
+    }
+
+
+    let mut msg = String::from("Modified count = ");
+    msg.push_str(c.to_string().as_str());
+    Ok(QueryStatus::Success(String::from(msg)))
+}
+
 fn db_write(query: &Query, cli: &Client, pwd_protected: bool) -> Result<QueryStatus, mongodb::error::Error> {
     match &query.data {
         Some(_data) => (),
@@ -246,17 +291,19 @@ fn db_write(query: &Query, cli: &Client, pwd_protected: bool) -> Result<QuerySta
         enc.push(e.into());
     }
 
-    let update = match secret.tag {
+    let push = match secret.tag {
         Some(tag) => doc! {"$push": {"secrets": { "tag": tag, "enc": enc } }},
         None => doc! {"$push": {"secrets": { "enc": enc } }},
     };
  
     let filter = doc! { "usr": query.user.as_str()};
-    let res = cli.database("secrets").collection("users").update_one(filter, update, None)?; 
+    let res = cli.database("secrets").collection("users").update_one(filter, push, None)?; 
     
     let c = res.modified_count; 
     if c == 1 {
-        Ok(QueryStatus::Success(String::new()))
+        let mut msg = String::from("Modified count = ");
+        msg.push_str(c.to_string().as_str());
+        Ok(QueryStatus::Success(String::from(msg)))
     } else {
         let mut msg = String::from("Something went wrong with write. Modified count = ");
         msg.push_str(c.to_string().as_str());
