@@ -3,18 +3,33 @@ const MAX_LEN = 4096;
 function init() {
 	let about = document.getElementById('about');
         let title = document.createElement("h2");
+
         title.innerHTML = "- About";
         title.classList.add("left", "dropDown");
         about.append(title);
 
 	let inner = document.createElement("div");
 	
-	let txt = document.createElement("p");
-	txt.innerHTML = "explain"
-	inner.append(txt);
+	let p1 = document.createElement("p");
+	p1.innerHTML = "Secrets is an app that lets you store strings like passwords in a secure way."
+	inner.append(p1);
+
+	let p2 = document.createElement("p");
+	p2.innerHTML = "No passwords are saved, and no data is saved in an unencrypted format."
+	inner.append(p2);	
 	
+	let p3 = document.createElement("p");
+	p3.innerHTML = "Optionally, secrets can be created with a tag."
+	inner.append(p3);	
+
+	let p4 = document.createElement("p");
+	p4.innerHTML = "Tags, along with the index, can be used to filter read/delete operations. "
+	inner.append(p4);	
+
+
 	let diagram = document.createElement("img");
-	diagram.src="pup.jpg";
+	diagram.src="secrets_diagram_crop.png";
+	diagram.width = "950";
 	inner.append(diagram);
 
 
@@ -22,17 +37,16 @@ function init() {
 
 	$(".dropDown").click(function(){
 		let curr = this.innerHTML;
-		if(curr[0] == '+') {
-			curr = curr.replace('+', '-');
-		} else if (curr[0] == '-') {
+		if(curr[0] == '-') {
 			curr = curr.replace('-', '+');
+		} else if (curr[0] == '+') {
+			curr = curr.replace('+', '-');
 		}
 		this.innerHTML = curr;
-		//var oldWidth = $(this.nextSibling).width();
-		//$(this.nextSibling).slideToggle(200, () => {$(this).width(oldWidth);} );
-		$(this.nextSibling).slideToggle(200, () => {200;} );
-
+		var oldWidth = $(this.nextSibling).width();
+		$(this.nextSibling).slideToggle(200, () => {$(this).width(oldWidth);} );
 	});
+
 }
 
 function clicked_new_user() {
