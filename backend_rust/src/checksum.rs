@@ -59,10 +59,10 @@ pub fn hash_strings(s1: &String, s2: &String) -> u64 {
 // isn't feasibly reversible. The Hc128 seems to perform
 // well according to rust documentation
 // https://docs.rs/rand/0.5.0/rand/prng/index.html
-pub fn get_checksum(s1: &String, s2: &String) -> u128 {
+pub fn get_checksum(s1: &String, s2: &String) -> u64 {
     let hash = hash_strings(&s1, &s2);
     let mut rng = rand_hc::Hc128Rng::seed_from_u64(hash);
-    rng.gen_range(0..u128::MAX)
+    rng.gen_range(0..u64::MAX)
 }
 
 

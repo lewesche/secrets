@@ -42,3 +42,9 @@ bin
 
 # rust target
 /backend/target
+
+# node
+node_modules
+
+#python
+__pycache__
