@@ -1,0 +1,75 @@
+<!--
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="UTF-8">
+    <title>Secrets</title>
+  </head>
+  <body>
+  <script type="text/javascript" src="index.js"></script>
+	hellooooo
+  </body>
+</html>
+-->
+
+<!doctype html>
+
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <title>Lewesche</title>
+    <link rel="stylesheet" href="src/style.css">
+    <link rel="stylesheet" href="src/secrets.css">
+</head>
+
+<body onload="Lib.init()">
+    <h1>secrets</h1><h3> by Leif Wesche</h3>
+    <br><br>
+
+    <div class="center">
+        <div class="col">
+            <label>User Name:<br><input type="text" id="usr_txt" value="testusr" class="colorInput"></label>
+            <label>Password:<br><input type="password" id="pwd_txt" class="colorInput"></label>
+            <button id="new_usr_button" onClick="Lib.clicked_new_user()">New User</button>
+
+        </div>
+    
+        <div class="col">
+            <label>Action:<br>  
+                <label><input type="radio" id="read_button" name="action_button" value="r" checked>Read</label>
+                <label><input type="radio" id="write_button" name="action_button" value="w">Write</label>
+                <label><input type="radio" id="delete_button" name="action_button" value="d">Delete</label>
+        </div>
+
+        <div class="col" id="key_col">
+            <label>Data:<br><input type="text" id="dec_txt" value="" class="colorInput"><label>
+        </div>
+
+        <div class="col" id="idx_col">
+            <label>Idx:<br><input type="text" id="idx_txt" value="" class="colorInput"><label>
+        </div>
+
+        <div class="col" id="tag_col">
+            <label>Tag:<br><input type="text" id="tag_txt" value="" class="colorInput"><label>
+        </div>
+
+    </div>
+    
+    <div class="floatDummy"></div>
+    
+    <button id="go_button" onClick="Lib.wasm_test()">Go</button>
+
+    <br><br>
+    <div id="table_div">    
+    </div>
+    
+    <h3 id="notify"></h3>
+    <h3 id="error"></h3>
+
+    <div id="about">
+    </div>
+
+	<script src="https://ajax.googleapis.com/ajax/libs/jquery/3.5.1/jquery.min.js"></script>
+    <script src="dist/index.js"></script>  
+</body>
+</html>
