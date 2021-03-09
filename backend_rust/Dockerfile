@@ -2,13 +2,12 @@ FROM rust
 
 RUN mkdir /app
 WORKDIR /app
-RUN mkdir /var/secrets_data
 
 COPY . .
 
 # Compile and install the c++ binary
-RUN chmod +x *.sh
-RUN ./install.sh
+#RUN chmod +x *.sh
+#RUN ./install.sh
 
 # Rocket.rs framework requires nightly
 RUN rustup default nightly

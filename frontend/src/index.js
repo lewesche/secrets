@@ -8,6 +8,12 @@ module.exports = {
 const rust = import('../pkg');
 const MAX_LEN = 4096;
 
+function checkLen(obj) {
+	if (JSON.stringify(obj).length > MAX_LEN) {
+        throw "Request is too long"
+    }
+}
+
 function wasm_test() {
 	rust.then(m => {
 		console.log('checksum: {}', m.get_checksum('username', 'password'))
@@ -19,6 +25,7 @@ function wasm_test() {
   }).catch(console.error);
 }
 
+// Sets up the little about section
 function init() {
     let about = document.getElementById('about');
         let title = document.createElement("h2");
@@ -68,100 +75,110 @@ function init() {
 }
 
 function clicked_new_user() {
-    clear();
-    usr = document.getElementById('usr_txt').value;
-    pwd = document.getElementById('pwd_txt').value;
+	try {
+    	clear();
 
-    body = {};
-    body.action = "c";
-    body.usr = usr;
-    if(pwd != "")
-        body.pwd = pwd;
+    	usr = document.getElementById('usr_txt').value;
+		if (usr=="") {
+			throw "Missing user!"
+		}
+		let body = {};
+		body.action = "c";
+    	body.usr = usr;
 
-    if (JSON.stringify(body).length > MAX_LEN) {
-        clear();
-        setError("Request is too long")
-        return;
-    }
+		pwd = document.getElementById('pwd_txt').value;
+		if(pwd != "") {
+			new_user_pwd(body, pwd)
+		} else {
+			new_user_no_pwd(body)
+		}
+	} catch (e) {
+		setError(e)
+	}
+}
 
+function new_user_pwd(usr, pwd) {
+	rust.then(m => {
+		body.sum = m.get_checksum(body.usr, pwd)
+		checkLen(body);
+		send(body);
+  	})
+}
 
-    let url = "/secrets/new";
-
-    let xhr = new XMLHttpRequest();
-    xhr.open("POST", url, true);
-    xhr.setRequestHeader('Content-Type', 'application/json; charset=UTF-8');
-    xhr.onload = function (e) {
-        if (xhr.readyState === 4) {
-            if (xhr.status === 200) {
-            console.log(xhr.responseText);
-            let obj = JSON.parse(xhr.responseText);
-            if(obj.success == "true") {
-                setNotify("New user " + usr + " created")
-            } else if(obj.hasOwnProperty("e")) {
-                setError(obj.e);
-            } else {
-                setError("Failed with unknown error");
-            }
-            } else {
-            setError("HTTP error: " + xhr.statusText);
-            }
-        }
-    };
-    xhr.onerror = function (e) {
-        setError("HTTP error: " + xhr.statusText);
-    };
-    xhr.send(JSON.stringify(body));
+function new_user_no_pwd () {
+	checkLen(body);
+	send(body);
 }
 
 function clicked_go() {
-    clear();
-    let radios = document.getElementsByName('action_button');
-    for(let i=0; i<radios.length; i++) {
-        if(radios[i].checked) {
-            send_query(radios[i].value)
-            return;
-        }
-    }
+	try {
+	    clear();
+    	let radios = document.getElementsByName('action_button');
+	    for(let i=0; i<radios.length; i++) {
+    	    if(radios[i].checked) {
+        	    query(radios[i].value)
+            	return;
+    	    }
+	    }
+	} catch (e) {
+		setError(e);
+	}
 }
 
-function send_query(action) {
+function query(action) {
     idx = document.getElementById('idx_txt').value;
     tag = document.getElementById('tag_txt').value;
     usr = document.getElementById('usr_txt').value;
-    dec = document.getElementById('dec_txt').value;
     pwd = document.getElementById('pwd_txt').value;
 
     body = {};
-
     body.action = action;
-
-    if(action=="w")
-        if(dec !="")
-            body.data = dec;
 
     if(usr!="")
         body.usr = usr;
+	
+	if(action!="w" && idx!="")
+        body.idx = idx;
 
-    if(pwd != "")
-        body.pwd = pwd;
 
     if(tag!="")
         body.tag = tag;
 
-    if(action!="w" && idx!="")
-        body.idx = idx;
-
     clear_fields();
 
-    if (JSON.stringify(body).length > MAX_LEN) {
-        setError("Request is too long")
-        return;
-    }
-
-    request(body);
+    if(pwd != "") {
+		query_pwd(body, pwd)
+	} else {
+		query_no_pwd(body)
+	}
 }
 
-function request(body) {
+function query_pwd(body, pwd) {
+	rust.then(m => {
+		body.sum = m.get_checksum(body.usr, pwd)
+
+		if(body.action=="w") {
+		    data = document.getElementById('dec_txt').value;
+    		if(data !="") 
+           		body.data = m.encode(body.usr, pwd, data);
+		}
+
+		checkLen(body);
+		send(body);
+  	})
+}
+
+function query_no_pwd(body) {
+	if(body.action=="w") {
+	    data = document.getElementById('dec_txt').value;
+    	if(data !="")
+        	body.data = data;
+	}	
+	checkLen(body);
+	send(body);
+}
+
+function send(body) {
     let url = "/secrets/usr";
     console.log(body);
 
@@ -171,35 +188,40 @@ function request(body) {
     xhr.onload = function (e) {
         if (xhr.readyState === 4) {
             if (xhr.status === 200) {
-                try {
-                    console.log(xhr.responseText);
-                    let obj = JSON.parse(xhr.responseText);
-                    if(obj.success=="true") {
-                        if(body.action == "r") {
-                            setTable(obj.res);
-                        } else {
-                            // Read again to get an updated table
-                            send_query("r");
-                        }
-                    } else if(obj.hasOwnProperty("e")) {
-                        setError(obj.e);
-                    } else {
-                        setError("Unknown Error");
-                    }
-                } catch(e) { // valid delete and write responses return invalid json - prompting a recursive read
-                    setError(e);
-                    console.log("bad json: " + xhr.responseText + e);
-                }
+				parse_response(body, xhr.responseText);
             } else {
-            setError("HTTP error: " + xhr.statusText);
+            	throw "HTTP error: " + xhr.statusText
             }
         }
     };
     xhr.onerror = function (e) {
-        console.error(xhr.statusText);
-        setError("HTTP error: " + xhr.statusText);
+        throw "HTTP error: " + xhr.statusText
     };
-    xhr.send(JSON.stringify(body));
+    xhr.send(JSON.stringify(body))
+}
+
+function parse_response(body, res) {
+	console.log(res)
+	let obj = JSON.parse(res);
+
+	if(obj.success=="false") {
+		if(obj.hasOwnProperty("e")) 
+    		throw obj.e
+    } else {
+    	throw "Unknown Error"
+    }
+
+    if(body.action == "r") {
+		if ('sum' in body) {
+			setTable(obj.res, true);
+		} else {
+        	setTable(obj.res, false);
+		}
+    } else if (body.action == "c") {
+		setNotify("New user " + body.usr + " created")
+	} else {
+    	query("r");
+    }
 }
 
 function setNotify(str) {
@@ -208,31 +230,41 @@ function setNotify(str) {
     ele.innerHTML = str;
 }
 
-
 function setError(e) {
     ele = document.getElementById("error");
     ele.style.display = "block";
     ele.innerHTML = e;
 }
 
-function setTable(obj) {
-    console.log("in set table");
-    html_txt = "<table>";
-    html_txt += "<tr>" + "<th>idx</th>" + "<th>tag</th>" + "<th>text</th>" + "</tr>";
-    for(i=0; i<obj.length; i++) {
-        html_txt += "<tr>"
-        html_txt += "<td>" + i + "</td>";
-        html_txt += "<td>";
-        if(obj[i].hasOwnProperty('tag')){
-            html_txt += obj[i].tag;
-        }
-        html_txt += "</td>";
+function setTable(obj, decode) {
+	usr = document.getElementById('usr_txt').value;
+    pwd = document.getElementById('pwd_txt').value;
+	
+	if(decode && (usr=="" || pwd=="")) {
+		throw 'Missing username or password'
+	}
 
-        html_txt += "<td>" + obj[i].enc + "</td>";
-        html_txt += "</tr>"
-    }
-    html_txt += "</table>";
-    document.getElementById("table_div").innerHTML = html_txt;
+	rust.then(m => {
+    	html_txt = "<table>";
+    	html_txt += "<tr>" + "<th>idx</th>" + "<th>tag</th>" + "<th>text</th>" + "</tr>";
+	    for(i=0; i<obj.length; i++) {
+    	    html_txt += "<tr>"
+        	html_txt += "<td>" + i + "</td>";
+	        html_txt += "<td>";
+    	    if(obj[i].hasOwnProperty('tag')){
+        	    html_txt += obj[i].tag;
+	        }
+    	    html_txt += "</td>";
+			if (decode) {
+        		html_txt += "<td>" + m.decode(usr, pwd, obj[i].enc) + "</td>";
+			} else {
+				html_txt += "<td>" + obj[i].enc + "</td>";
+			}
+	        html_txt += "</tr>"
+    	}
+	    html_txt += "</table>";
+    	document.getElementById("table_div").innerHTML = html_txt;
+  	})
 }
 
 function clear() {
@@ -259,4 +291,5 @@ function clear_fields() {
     document.getElementById('tag_txt').value = "";
     document.getElementById('dec_txt').value = "";
 }
+
 
