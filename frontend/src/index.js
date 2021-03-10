@@ -2,27 +2,18 @@ module.exports = {
 	init, 
 	clicked_new_user,
 	clicked_go, 
-	wasm_test
 }
 
 const rust = import('../pkg');
 const MAX_LEN = 4096;
 
+// Without this, can't stringify 64 bit nums
+BigInt.prototype.toJSON = function() { return this.toString(); };
+
 function checkLen(obj) {
 	if (JSON.stringify(obj).length > MAX_LEN) {
         throw "Request is too long"
     }
-}
-
-function wasm_test() {
-	rust.then(m => {
-		console.log('checksum: {}', m.get_checksum('username', 'password'))
-		let enc = m.encode("username", "password", "hello")
-		console.log('enc: {}', enc)
-		let dec = m.decode("username", "password", enc)
-		dec = String.fromCharCode(...dec)
-		console.log('dec, {}', dec)
-  }).catch(console.error);
 }
 
 // Sets up the little about section
@@ -53,7 +44,7 @@ function init() {
     inner.append(p4);   
 
     let diagram = document.createElement("img");
-    diagram.src="img/secrets_diagram_crop.png";
+    diagram.src="secrets_diagram_crop.png";
     diagram.width = "950";
     inner.append(diagram);
 
@@ -97,15 +88,19 @@ function clicked_new_user() {
 	}
 }
 
-function new_user_pwd(usr, pwd) {
-	rust.then(m => {
-		body.sum = m.get_checksum(body.usr, pwd)
-		checkLen(body);
-		send(body);
-  	})
+function new_user_pwd(body, pwd) {
+	try {
+		rust.then(m => {
+			body.sum = m.get_checksum(body.usr, pwd)
+			checkLen(body);
+			send(body);
+	  	})
+	} catch (e) {
+		setError(e)
+	}
 }
 
-function new_user_no_pwd () {
+function new_user_no_pwd(body) {
 	checkLen(body);
 	send(body);
 }
@@ -144,8 +139,6 @@ function query(action) {
     if(tag!="")
         body.tag = tag;
 
-    clear_fields();
-
     if(pwd != "") {
 		query_pwd(body, pwd)
 	} else {
@@ -154,74 +147,97 @@ function query(action) {
 }
 
 function query_pwd(body, pwd) {
-	rust.then(m => {
-		body.sum = m.get_checksum(body.usr, pwd)
+	try {
+		rust.then(m => {
+			body.sum = m.get_checksum(body.usr, pwd)
 
-		if(body.action=="w") {
-		    data = document.getElementById('dec_txt').value;
-    		if(data !="") 
-           		body.data = m.encode(body.usr, pwd, data);
-		}
+			if(body.action=="w") {
+			    data = document.getElementById('dec_txt').value;
+    			if(data !="") 
+				// Leaving it as a uint8array causes json.stringify to get wonky
+	           		body.data = Array.from(m.encode(body.usr, pwd, data));
+			}
 
-		checkLen(body);
-		send(body);
-  	})
+			checkLen(body);
+			send(body);
+  		})
+	} catch (e) {
+		setError(e)
+	}
+}
+
+function bytes(s) {
+	var i, a = new Array(s.length);
+	for (i = 0; i < s.length; i++) {
+		a[i] = s.charCodeAt(i);
+	}
+	return a;
 }
 
 function query_no_pwd(body) {
 	if(body.action=="w") {
 	    data = document.getElementById('dec_txt').value;
     	if(data !="")
-        	body.data = data;
+        	body.data = bytes(data);
 	}	
 	checkLen(body);
 	send(body);
 }
 
 function send(body) {
-    let url = "/secrets/usr";
-    console.log(body);
-
-    let xhr = new XMLHttpRequest();
-    xhr.open("POST", url, true);
-    xhr.setRequestHeader('Content-Type', 'application/json; charset=UTF-8');
-    xhr.onload = function (e) {
-        if (xhr.readyState === 4) {
-            if (xhr.status === 200) {
-				parse_response(body, xhr.responseText);
-            } else {
-            	throw "HTTP error: " + xhr.statusText
-            }
-        }
-    };
-    xhr.onerror = function (e) {
-        throw "HTTP error: " + xhr.statusText
-    };
-    xhr.send(JSON.stringify(body))
+	try {
+		let url = "/secrets/usr";
+		let xhr = new XMLHttpRequest();
+		xhr.open("POST", url, true);
+		xhr.setRequestHeader('Content-Type', 'application/json; charset=UTF-8');
+		xhr.onload = function (e) {
+			if (xhr.readyState === 4) {
+				if (xhr.status === 200) {
+					parse_response(body, xhr.responseText);
+				} else {
+					throw "HTTP error: " + xhr.statusText
+				}
+			}
+		};
+		xhr.onerror = function (e) {
+			throw "HTTP error: " + xhr.statusText
+		};
+		xhr.send(JSON.stringify(body))
+	} catch (e) {
+		setError(e)
+	}
 }
 
 function parse_response(body, res) {
-	console.log(res)
-	let obj = JSON.parse(res);
+	try {
+		let obj = JSON.parse(res);
 
-	if(obj.success=="false") {
-		if(obj.hasOwnProperty("e")) 
-    		throw obj.e
-    } else {
-    	throw "Unknown Error"
-    }
-
-    if(body.action == "r") {
-		if ('sum' in body) {
-			setTable(obj.res, true);
-		} else {
-        	setTable(obj.res, false);
+		if(obj.success=="false") {
+			if(obj.hasOwnProperty("e")) {
+    				throw obj.e
+			} else {
+    				throw "Unknown Error"
+    			}
 		}
-    } else if (body.action == "c") {
-		setNotify("New user " + body.usr + " created")
-	} else {
-    	query("r");
-    }
+
+
+		clear_fields();
+
+		if(body.action == "r") {
+			if ('sum' in body) {
+				setTable(obj.res, true);
+			} else {
+        		setTable(obj.res, false);
+			}
+		} else if (body.action == "c") {
+			setNotify("New user " + body.usr + " created")
+		} else {
+	    		query("r");
+		}
+	} catch (e) {
+		setError(e)
+	}
+
 }
 
 function setNotify(str) {
@@ -237,8 +253,9 @@ function setError(e) {
 }
 
 function setTable(obj, decode) {
+	try {
 	usr = document.getElementById('usr_txt').value;
-    pwd = document.getElementById('pwd_txt').value;
+	pwd = document.getElementById('pwd_txt').value;
 	
 	if(decode && (usr=="" || pwd=="")) {
 		throw 'Missing username or password'
@@ -255,16 +272,23 @@ function setTable(obj, decode) {
         	    html_txt += obj[i].tag;
 	        }
     	    html_txt += "</td>";
+		    	let dec;
 			if (decode) {
-        		html_txt += "<td>" + m.decode(usr, pwd, obj[i].enc) + "</td>";
+				dec = m.decode(usr, pwd, obj[i].enc)
 			} else {
-				html_txt += "<td>" + obj[i].enc + "</td>";
+				dec = obj[i].enc
 			}
+		    	let asString = String.fromCharCode(...dec); 
+			html_txt += "<td>" + asString + "</td>";
 	        html_txt += "</tr>"
     	}
 	    html_txt += "</table>";
     	document.getElementById("table_div").innerHTML = html_txt;
   	})
+	} catch (e) {
+		setError(e)
+	}
+
 }
 
 function clear() {

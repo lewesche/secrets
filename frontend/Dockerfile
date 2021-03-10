@@ -15,6 +15,9 @@ RUN apt-get install -y nodejs
 RUN node -v
 RUN npm -v
 
+RUN apt install pkg-config
+RUN cargo install wasm-pack
+
 RUN npm install
 RUN npm run build
 

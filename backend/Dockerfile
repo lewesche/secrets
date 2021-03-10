@@ -1,5 +1,7 @@
 FROM node
 
+# sudo docker run --name secrets --rm -it -p 8000:8000 <imageID>
+
 RUN mkdir /app
 WORKDIR /app
 
