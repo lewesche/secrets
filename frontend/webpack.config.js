@@ -6,7 +6,7 @@ const WasmPackPlugin = require("@wasm-tool/wasm-pack-plugin");
 module.exports = {
     entry: './src/index.js',
     output: {
-		publicPath: 'secrets',
+		publicPath: 'secrets.html',
     	path: path.resolve(__dirname, 'dist'),
     	filename: 'index.js',
 		libraryTarget: 'var',
