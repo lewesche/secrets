@@ -41,10 +41,13 @@ bin
 *.swp
 
 # rust target
-/backend/target
+target
 
 # node
 node_modules
 
-#python
+# python
 __pycache__
+
+# webpack
+dist

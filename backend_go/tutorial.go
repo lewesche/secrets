@@ -1,0 +1,168 @@
+package main
+
+import (
+	"context"
+	"encoding/json"
+	"errors"
+	"fmt"
+	"log"
+	"net/http"
+	"strconv"
+	"time"
+
+	"go.mongodb.org/mongo-driver/bson"
+	"go.mongodb.org/mongo-driver/bson/primitive"
+	"go.mongodb.org/mongo-driver/mongo"
+	"go.mongodb.org/mongo-driver/mongo/options"
+)
+
+const uri = "mongodb+srv://lewesche:1234@cluster0.e6ckn.mongodb.net/secrets?retryWrites=true&w=majority"
+
+type Body struct {
+	Action string
+	Usr    string
+	Sum    string
+	Data   string
+	Tag    string
+	Idx    string
+}
+
+func parseBody(r *http.Request) (*Body, error) {
+	var body *Body
+	err := json.NewDecoder(r.Body).Decode(&body)
+	if err != nil {
+		return nil, err
+	}
+	return body, nil
+}
+
+func authenticate(body *Body) (*User, error) {
+	var user User
+	err := collection.FindOne(nil, bson.M{"usr": body.Usr}).Decode(&user)
+	if err != nil {
+		if body.Action != "c" {
+			return nil, errors.New("{\"e\": \"User not found\"}")
+		}
+	}
+	if user.Sum != "" {
+		if body.Sum == "" {
+			return nil, errors.New("{\"e\": \"Missing Password\"}")
+		} else if body.Sum != user.Sum {
+			return nil, errors.New("{\"e\": \"Wrong Password\"}")
+		}
+	}
+	return &user, nil
+}
+
+func read(body *Body, query *User) *string {
+	var res []Secret
+
+	tag_filter := false
+	if body.Tag != "" {
+		tag_filter = true
+	}
+
+	idx_filter := false
+	if body.Idx != "" {
+		idx_filter = true
+	}
+
+	i := 0
+	for _, secret := range query.Secrets {
+		if tag_filter {
+			if secret.Tag == body.Tag {
+				res = append(res, secret)
+				i++
+				continue
+			}
+		}
+		if idx_filter {
+			if body.Idx == strconv.Itoa(i) {
+				res = append(res, secret)
+				i++
+				continue
+			}
+		} else {
+			res = append(res, secret)
+		}
+		i++
+	}
+	resJson, _ := json.Marshal(res)
+	resJsonString := string(resJson)
+	if resJsonString == "null" {
+		resJsonString = "[]"
+	}
+	return &resJsonString
+}
+
+func write(body *Body, query *User) error {
+	return nil
+}
+
+func usrHandler(w http.ResponseWriter, r *http.Request) {
+	switch r.Method {
+	case "POST":
+		body, err := parseBody(r)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusBadRequest)
+			return
+		}
+
+		query, err := authenticate(body)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusUnauthorized)
+			return
+		}
+
+		switch body.Action {
+		case "r":
+			res := read(body, query)
+			fmt.Fprintf(w, "{\"Res\":%v}", *res)
+		case "w":
+			if err = write(body, query); err != nil {
+				http.Error(w, err.Error(), http.StatusBadRequest)
+			} else {
+				fmt.Fprintf(w, "{\"Res\":[]}")
+			}
+
+		default:
+			http.Error(w, "{\"e\": \"Action not recognized\"}", http.StatusUnauthorized)
+		}
+
+	default:
+		http.Error(w, "POST only", http.StatusMethodNotAllowed)
+	}
+}
+
+type Secret struct {
+	Enc []int32 `bson:"enc,omitempty"`
+	Tag string  `bson:"tag,omitempty"`
+}
+
+type User struct {
+	ID      primitive.ObjectID `bson:"_id,omitempty"`
+	Usr     string             `bson:"usr,omitempty"`
+	Sum     string             `bson:"sum,omitempty"`
+	Secrets []Secret           `bson:"secrets,omitempty"`
+}
+
+var collection *mongo.Collection
+
+func main() {
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+	client, err := mongo.Connect(ctx, options.Client().ApplyURI(uri))
+	if err != nil {
+		panic(err)
+	}
+	defer func() {
+		if err = client.Disconnect(ctx); err != nil {
+			panic(err)
+		}
+	}()
+	collection = client.Database("secrets").Collection("users")
+
+	http.HandleFunc("/secrets/usr", usrHandler)
+	fmt.Println("Running server")
+	log.Fatal(http.ListenAndServe(":8000", nil))
+}
