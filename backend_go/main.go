@@ -22,7 +22,7 @@ type Body struct {
 	Action string
 	Usr    string
 	Sum    string
-	Data   string
+	Data   []int32
 	Tag    string
 	Idx    string
 }
@@ -42,6 +42,10 @@ func authenticate(body *Body) (*User, error) {
 	if err != nil {
 		if body.Action != "c" {
 			return nil, errors.New("{\"e\": \"User not found\"}")
+		}
+	} else {
+		if body.Action == "c" {
+			return nil, errors.New("{\"e\": \"User already exists\"}")
 		}
 	}
 	if user.Sum != "" {
@@ -82,7 +86,8 @@ func read(body *Body, query *User) *string {
 				i++
 				continue
 			}
-		} else {
+		}
+		if !tag_filter && !idx_filter {
 			res = append(res, secret)
 		}
 		i++
@@ -95,8 +100,84 @@ func read(body *Body, query *User) *string {
 	return &resJsonString
 }
 
-func write(body *Body, query *User) error {
-	return nil
+func write(body *Body, query *User) (*string, error) {
+	if len(body.Data) == 0 {
+		return nil, errors.New("{\"e\": \"No data to write\"}")
+	}
+
+	filter := bson.M{"usr": body.Usr}
+	var push bson.D
+	if body.Tag == "" {
+		push = bson.D{{"$push", bson.D{{"secrets", bson.D{{"enc", body.Data}}}}}}
+	} else {
+		push = bson.D{{"$push", bson.D{{"secrets", bson.D{{"tag", body.Tag}, {"enc", body.Data}}}}}}
+	}
+	res, err := collection.UpdateOne(nil, filter, push)
+	if err != nil {
+		return nil, err
+	} else {
+		msg := "\"Modified Count: " + strconv.Itoa(int(res.ModifiedCount)) + "\""
+		return &msg, nil
+	}
+}
+
+func delete(body *Body, query *User) (*string, error) {
+	// Delete by idx first, then tag
+	filter := bson.M{"usr": body.Usr}
+
+	var foundErr bool
+	modified_sum := 0
+	if body.Idx != "" {
+		arr_idx := "secrets." + body.Idx
+		unset := bson.D{{"$unset", bson.D{{arr_idx, 0}}}}
+		if res, err := collection.UpdateOne(nil, filter, unset); err != nil {
+			foundErr = true
+		} else {
+			modified_sum += int(res.ModifiedCount)
+		}
+
+		pull := bson.D{{"$pull", bson.D{{"secrets", nil}}}}
+		if _, err := collection.UpdateOne(nil, filter, pull); err != nil {
+			foundErr = true
+		}
+	}
+
+	if body.Tag != "" {
+		pull := bson.D{{"$pull", bson.D{{"secrets", bson.D{{"tag", body.Tag}}}}}}
+		if res, err := collection.UpdateOne(nil, filter, pull); err != nil {
+			foundErr = true
+		} else {
+			modified_sum += int(res.ModifiedCount)
+		}
+	}
+	if foundErr {
+		return nil, errors.New("{\"e\": \"Something went wrong in delete\"}")
+	} else {
+		msg := "\"Modified Count: " + strconv.Itoa(modified_sum) + "\""
+		return &msg, nil
+	}
+}
+
+func create(body *Body, query *User) (*string, error) {
+	var newUser bson.D
+	if body.Sum == "" {
+		newUser = bson.D{
+			{Key: "usr", Value: body.Usr},
+			{Key: "secrets", Value: bson.A{}},
+		}
+	} else {
+		newUser = bson.D{
+			{Key: "usr", Value: body.Usr},
+			{Key: "sum", Value: body.Sum},
+			{Key: "secrets", Value: bson.A{}},
+		}
+	}
+	if _, err := collection.InsertOne(nil, newUser); err != nil {
+		return nil, err
+	} else {
+		msg := "\"Created new user: " + body.Usr + "\""
+		return &msg, nil
+	}
 }
 
 func usrHandler(w http.ResponseWriter, r *http.Request) {
@@ -119,10 +200,22 @@ func usrHandler(w http.ResponseWriter, r *http.Request) {
 			res := read(body, query)
 			fmt.Fprintf(w, "{\"Res\":%v}", *res)
 		case "w":
-			if err = write(body, query); err != nil {
+			if res, err := write(body, query); err != nil {
 				http.Error(w, err.Error(), http.StatusBadRequest)
 			} else {
-				fmt.Fprintf(w, "{\"Res\":[]}")
+				fmt.Fprintf(w, "{\"Res\":%v}", *res)
+			}
+		case "d":
+			if res, err := delete(body, query); err != nil {
+				http.Error(w, err.Error(), http.StatusBadRequest)
+			} else {
+				fmt.Fprintf(w, "{\"Res\":%v}", *res)
+			}
+		case "c":
+			if res, err := create(body, query); err != nil {
+				http.Error(w, err.Error(), http.StatusBadRequest)
+			} else {
+				fmt.Fprintf(w, "{\"Res\":%v}", *res)
 			}
 
 		default:
