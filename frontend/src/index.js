@@ -247,7 +247,6 @@ function setError(e) {
 }
 
 function setTable(obj, decode) {
-	//console.log(obj)
 	try {
 	usr = document.getElementById('usr_txt').value;
 	pwd = document.getElementById('pwd_txt').value;
@@ -273,7 +272,6 @@ function setTable(obj, decode) {
 		} else {
 			dec = obj[i].Enc
 		}
-		console.log("dec: ", dec)
 		let asString = String.fromCharCode(...dec); 
 		html_txt += "<td>" + asString + "</td>";
 	        html_txt += "</tr>"
