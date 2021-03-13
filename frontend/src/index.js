@@ -195,7 +195,7 @@ function send(body) {
 				if (xhr.status === 200) {
 					parse_response(body, xhr.responseText);
 				} else {
-					throw "HTTP error: " + xhr.statusText
+					setError(xhr.responseText)
 				}
 			}
 		};
@@ -211,31 +211,25 @@ function send(body) {
 function parse_response(body, res) {
 	try {
 		let obj = JSON.parse(res);
+		if(obj.hasOwnProperty("e")) {
+    			throw obj.e
+		} 
 
-		if(obj.success=="false") {
-			if(obj.hasOwnProperty("e")) {
-    				throw obj.e
-			} else {
-    				throw "Unknown Error"
-    			}
-		}
-
-
-		clear_fields();
 
 		if(body.action == "r") {
 			if ('sum' in body) {
-				setTable(obj.res, true);
+				setTable(obj.Res, true);
 			} else {
-        		setTable(obj.res, false);
+        		setTable(obj.Res, false);
 			}
 		} else if (body.action == "c") {
 			setNotify("New user " + body.usr + " created")
 		} else {
+			clear_fields()
 	    		query("r");
 		}
 	} catch (e) {
-		setError(e)
+		setError("Bad json")
 	}
 
 }
@@ -253,6 +247,7 @@ function setError(e) {
 }
 
 function setTable(obj, decode) {
+	//console.log(obj)
 	try {
 	usr = document.getElementById('usr_txt').value;
 	pwd = document.getElementById('pwd_txt').value;
@@ -265,21 +260,22 @@ function setTable(obj, decode) {
     	html_txt = "<table>";
     	html_txt += "<tr>" + "<th>idx</th>" + "<th>tag</th>" + "<th>text</th>" + "</tr>";
 	    for(i=0; i<obj.length; i++) {
-    	    html_txt += "<tr>"
+    	    	html_txt += "<tr>"
         	html_txt += "<td>" + i + "</td>";
 	        html_txt += "<td>";
-    	    if(obj[i].hasOwnProperty('tag')){
-        	    html_txt += obj[i].tag;
+    	    	if(obj[i].hasOwnProperty('Tag')){
+        	    html_txt += obj[i].Tag;
 	        }
-    	    html_txt += "</td>";
-		    	let dec;
-			if (decode) {
-				dec = m.decode(usr, pwd, obj[i].enc)
-			} else {
-				dec = obj[i].enc
-			}
-		    	let asString = String.fromCharCode(...dec); 
-			html_txt += "<td>" + asString + "</td>";
+    	    	html_txt += "</td>";
+		let dec;
+		if (decode) {
+			dec = m.decode(usr, pwd, obj[i].Enc)
+		} else {
+			dec = obj[i].Enc
+		}
+		console.log("dec: ", dec)
+		let asString = String.fromCharCode(...dec); 
+		html_txt += "<td>" + asString + "</td>";
 	        html_txt += "</tr>"
     	}
 	    html_txt += "</table>";

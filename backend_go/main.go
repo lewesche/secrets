@@ -41,18 +41,18 @@ func authenticate(body *Body) (*User, error) {
 	err := collection.FindOne(nil, bson.M{"usr": body.Usr}).Decode(&user)
 	if err != nil {
 		if body.Action != "c" {
-			return nil, errors.New("{\"e\": \"User not found\"}")
+			return nil, errors.New("User not found")
 		}
 	} else {
 		if body.Action == "c" {
-			return nil, errors.New("{\"e\": \"User already exists\"}")
+			return nil, errors.New("User already exists")
 		}
 	}
 	if user.Sum != "" {
 		if body.Sum == "" {
-			return nil, errors.New("{\"e\": \"Missing Password\"}")
+			return nil, errors.New("Missing Password")
 		} else if body.Sum != user.Sum {
-			return nil, errors.New("{\"e\": \"Wrong Password\"}")
+			return nil, errors.New("Wrong Password")
 		}
 	}
 	return &user, nil
@@ -102,7 +102,7 @@ func read(body *Body, query *User) *string {
 
 func write(body *Body, query *User) (*string, error) {
 	if len(body.Data) == 0 {
-		return nil, errors.New("{\"e\": \"No data to write\"}")
+		return nil, errors.New("No data to write")
 	}
 
 	filter := bson.M{"usr": body.Usr}
@@ -151,7 +151,7 @@ func delete(body *Body, query *User) (*string, error) {
 		}
 	}
 	if foundErr {
-		return nil, errors.New("{\"e\": \"Something went wrong in delete\"}")
+		return nil, errors.New("Something went wrong in delete")
 	} else {
 		msg := "\"Modified Count: " + strconv.Itoa(modified_sum) + "\""
 		return &msg, nil
@@ -219,7 +219,7 @@ func usrHandler(w http.ResponseWriter, r *http.Request) {
 			}
 
 		default:
-			http.Error(w, "{\"e\": \"Action not recognized\"}", http.StatusUnauthorized)
+			http.Error(w, "Action not recognized", http.StatusUnauthorized)
 		}
 
 	default:
