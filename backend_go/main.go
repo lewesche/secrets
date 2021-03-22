@@ -245,10 +245,6 @@ type User struct {
 	Secrets []Secret           `bson:"secrets,omitempty"`
 }
 
-func HelloHandler(w http.ResponseWriter, r *http.Request) {
-	fmt.Fprintf(w, "Hello")
-}
-
 func main() {
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
