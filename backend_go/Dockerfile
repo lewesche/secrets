@@ -1,6 +1,6 @@
 FROM golang
 
-# sudo docker run --name secrets --rm -it -p 8000:8000 <imageID>
+# sudo docker run --name secrets --rm -d -p 8000:8000 <imageID>
 
 RUN mkdir /app
 WORKDIR /app
