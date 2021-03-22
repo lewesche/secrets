@@ -18,6 +18,12 @@ import (
 
 const uri = "mongodb+srv://lewesche:1234@cluster0.e6ckn.mongodb.net/secrets?retryWrites=true&w=majority"
 
+var collection *mongo.Collection
+
+func Add(x int, y int) int {
+	return x + y
+}
+
 type Body struct {
 	Action string
 	Usr    string
@@ -38,7 +44,7 @@ func parseBody(r *http.Request) (*Body, error) {
 
 func authenticate(body *Body) (*User, error) {
 	var user User
-	err := collection.FindOne(nil, bson.M{"usr": body.Usr}).Decode(&user)
+	err := collection.FindOne(context.TODO(), bson.M{"usr": body.Usr}).Decode(&user)
 	if err != nil {
 		if body.Action != "c" {
 			return nil, errors.New("{\"e\": \"User not found\"}")
@@ -112,7 +118,7 @@ func write(body *Body, query *User) (*string, error) {
 	} else {
 		push = bson.D{{"$push", bson.D{{"secrets", bson.D{{"tag", body.Tag}, {"enc", body.Data}}}}}}
 	}
-	res, err := collection.UpdateOne(nil, filter, push)
+	res, err := collection.UpdateOne(context.TODO(), filter, push)
 	if err != nil {
 		return nil, err
 	} else {
@@ -130,21 +136,21 @@ func delete(body *Body, query *User) (*string, error) {
 	if body.Idx != "" {
 		arr_idx := "secrets." + body.Idx
 		unset := bson.D{{"$unset", bson.D{{arr_idx, 0}}}}
-		if res, err := collection.UpdateOne(nil, filter, unset); err != nil {
+		if res, err := collection.UpdateOne(context.TODO(), filter, unset); err != nil {
 			foundErr = true
 		} else {
 			modified_sum += int(res.ModifiedCount)
 		}
 
 		pull := bson.D{{"$pull", bson.D{{"secrets", nil}}}}
-		if _, err := collection.UpdateOne(nil, filter, pull); err != nil {
+		if _, err := collection.UpdateOne(context.TODO(), filter, pull); err != nil {
 			foundErr = true
 		}
 	}
 
 	if body.Tag != "" {
 		pull := bson.D{{"$pull", bson.D{{"secrets", bson.D{{"tag", body.Tag}}}}}}
-		if res, err := collection.UpdateOne(nil, filter, pull); err != nil {
+		if res, err := collection.UpdateOne(context.TODO(), filter, pull); err != nil {
 			foundErr = true
 		} else {
 			modified_sum += int(res.ModifiedCount)
@@ -172,7 +178,7 @@ func create(body *Body, query *User) (*string, error) {
 			{Key: "secrets", Value: bson.A{}},
 		}
 	}
-	if _, err := collection.InsertOne(nil, newUser); err != nil {
+	if _, err := collection.InsertOne(context.TODO(), newUser); err != nil {
 		return nil, err
 	} else {
 		msg := "\"Created new user: " + body.Usr + "\""
@@ -180,7 +186,7 @@ func create(body *Body, query *User) (*string, error) {
 	}
 }
 
-func usrHandler(w http.ResponseWriter, r *http.Request) {
+func UsrHandler(w http.ResponseWriter, r *http.Request) {
 	switch r.Method {
 	case "POST":
 		body, err := parseBody(r)
@@ -239,7 +245,9 @@ type User struct {
 	Secrets []Secret           `bson:"secrets,omitempty"`
 }
 
-var collection *mongo.Collection
+func HelloHandler(w http.ResponseWriter, r *http.Request) {
+	fmt.Fprintf(w, "Hello")
+}
 
 func main() {
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
@@ -255,7 +263,7 @@ func main() {
 	}()
 	collection = client.Database("secrets").Collection("users")
 
-	http.HandleFunc("/secrets/usr", usrHandler)
+	http.HandleFunc("/secrets/usr", UsrHandler)
 	fmt.Println("Running server")
 	log.Fatal(http.ListenAndServe(":8000", nil))
 }
