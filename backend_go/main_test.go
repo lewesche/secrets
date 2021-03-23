@@ -8,6 +8,7 @@ import (
 	"math/rand"
 	"net/http"
 	"net/http/httptest"
+	"sync"
 	"testing"
 	"time"
 
@@ -77,16 +78,22 @@ func checkLen(t *testing.T, res []Secret, target int) {
 	}
 }
 
+func checkCode(t *testing.T, code int, target int) {
+	if code != target {
+		t.Errorf("Expected code: %v, got: %v\n", target, code)
+	}
+}
+
 func testCoreUsr(t *testing.T, usrname string, sum string) {
+	testCreateUsr(t, usrname, sum)
+
 	// Read should work, results should be empty
 	body := Body{"r", usrname, sum, nil, "", ""}
 	b, _ := json.Marshal(body)
 	request, _ := http.NewRequest("POST", "/secrets/usr", bytes.NewBuffer(b))
 	response := httptest.NewRecorder()
 	UsrHandler(response, request)
-	if response.Code != 200 {
-		t.Errorf("Expected status: %v, got: %v\n", 200, response.Code)
-	}
+	checkCode(t, response.Code, 200)
 
 	res, err := parseResponse(response)
 	if err != nil {
@@ -100,9 +107,7 @@ func testCoreUsr(t *testing.T, usrname string, sum string) {
 	request, _ = http.NewRequest("GET", "/secrets/usr", bytes.NewBuffer(b))
 	response = httptest.NewRecorder()
 	UsrHandler(response, request)
-	if response.Code != 405 {
-		t.Errorf("Expected status: %v, got: %v\n", 405, response.Code)
-	}
+	checkCode(t, response.Code, 405)
 
 	// Writing without data should not work
 	body = Body{"w", usrname, sum, nil, "", ""}
@@ -110,9 +115,7 @@ func testCoreUsr(t *testing.T, usrname string, sum string) {
 	request, _ = http.NewRequest("POST", "/secrets/usr", bytes.NewBuffer(b))
 	response = httptest.NewRecorder()
 	UsrHandler(response, request)
-	if response.Code != 400 {
-		t.Errorf("Expected status: %v, got: %v\n", 400, response.Code)
-	}
+	checkCode(t, response.Code, 400)
 
 	// Generate random write data
 	numWrites := 5
@@ -130,9 +133,7 @@ func testCoreUsr(t *testing.T, usrname string, sum string) {
 	request, _ = http.NewRequest("POST", "/secrets/usr", bytes.NewBuffer(b))
 	response = httptest.NewRecorder()
 	UsrHandler(response, request)
-	if response.Code != 200 {
-		t.Errorf("Expected status: %v, got: %v\n", 200, response.Code)
-	}
+	checkCode(t, response.Code, 200)
 
 	// Read it back
 	body = Body{"r", usrname, sum, nil, "", ""}
@@ -140,9 +141,7 @@ func testCoreUsr(t *testing.T, usrname string, sum string) {
 	request, _ = http.NewRequest("POST", "/secrets/usr", bytes.NewBuffer(b))
 	response = httptest.NewRecorder()
 	UsrHandler(response, request)
-	if response.Code != 200 {
-		t.Errorf("Expected status: %v, got: %v\n", 200, response.Code)
-	}
+	checkCode(t, response.Code, 200)
 
 	res, err = parseResponse(response)
 	if err != nil {
@@ -159,9 +158,7 @@ func testCoreUsr(t *testing.T, usrname string, sum string) {
 	request, _ = http.NewRequest("POST", "/secrets/usr", bytes.NewBuffer(b))
 	response = httptest.NewRecorder()
 	UsrHandler(response, request)
-	if response.Code != 200 {
-		t.Errorf("Expected status: %v, got: %v\n", 200, response.Code)
-	}
+	checkCode(t, response.Code, 200)
 
 	// Read both back
 	body = Body{"r", usrname, sum, nil, "", ""}
@@ -169,9 +166,7 @@ func testCoreUsr(t *testing.T, usrname string, sum string) {
 	request, _ = http.NewRequest("POST", "/secrets/usr", bytes.NewBuffer(b))
 	response = httptest.NewRecorder()
 	UsrHandler(response, request)
-	if response.Code != 200 {
-		t.Errorf("Expected status: %v, got: %v\n", 200, response.Code)
-	}
+	checkCode(t, response.Code, 200)
 
 	res, err = parseResponse(response)
 	if err != nil {
@@ -187,18 +182,14 @@ func testCoreUsr(t *testing.T, usrname string, sum string) {
 	request, _ = http.NewRequest("POST", "/secrets/usr", bytes.NewBuffer(b))
 	response = httptest.NewRecorder()
 	UsrHandler(response, request)
-	if response.Code != 200 {
-		t.Errorf("Expected status: %v, got: %v\n", 200, response.Code)
-	}
+	checkCode(t, response.Code, 200)
 
 	body = Body{"w", usrname, sum, writes[3], "", ""}
 	b, _ = json.Marshal(body)
 	request, _ = http.NewRequest("POST", "/secrets/usr", bytes.NewBuffer(b))
 	response = httptest.NewRecorder()
 	UsrHandler(response, request)
-	if response.Code != 200 {
-		t.Errorf("Expected status: %v, got: %v\n", 200, response.Code)
-	}
+	checkCode(t, response.Code, 200)
 
 	body = Body{"w", usrname, sum, writes[4], tags[0], ""}
 	b, _ = json.Marshal(body)
@@ -215,9 +206,7 @@ func testCoreUsr(t *testing.T, usrname string, sum string) {
 	request, _ = http.NewRequest("POST", "/secrets/usr", bytes.NewBuffer(b))
 	response = httptest.NewRecorder()
 	UsrHandler(response, request)
-	if response.Code != 200 {
-		t.Errorf("Expected status: %v, got: %v\n", 200, response.Code)
-	}
+	checkCode(t, response.Code, 200)
 
 	res, err = parseResponse(response)
 	if err != nil {
@@ -236,9 +225,7 @@ func testCoreUsr(t *testing.T, usrname string, sum string) {
 	request, _ = http.NewRequest("POST", "/secrets/usr", bytes.NewBuffer(b))
 	response = httptest.NewRecorder()
 	UsrHandler(response, request)
-	if response.Code != 200 {
-		t.Errorf("Expected status: %v, got: %v\n", 200, response.Code)
-	}
+	checkCode(t, response.Code, 200)
 
 	res, err = parseResponse(response)
 	if err != nil {
@@ -253,9 +240,7 @@ func testCoreUsr(t *testing.T, usrname string, sum string) {
 	request, _ = http.NewRequest("POST", "/secrets/usr", bytes.NewBuffer(b))
 	response = httptest.NewRecorder()
 	UsrHandler(response, request)
-	if response.Code != 200 {
-		t.Errorf("Expected status: %v, got: %v\n", 200, response.Code)
-	}
+	checkCode(t, response.Code, 200)
 
 	res, err = parseResponse(response)
 	if err != nil {
@@ -270,9 +255,7 @@ func testCoreUsr(t *testing.T, usrname string, sum string) {
 	request, _ = http.NewRequest("POST", "/secrets/usr", bytes.NewBuffer(b))
 	response = httptest.NewRecorder()
 	UsrHandler(response, request)
-	if response.Code != 200 {
-		t.Errorf("Expected status: %v, got: %v\n", 200, response.Code)
-	}
+	checkCode(t, response.Code, 200)
 
 	res, err = parseResponse(response)
 	if err != nil {
@@ -287,9 +270,7 @@ func testCoreUsr(t *testing.T, usrname string, sum string) {
 	request, _ = http.NewRequest("POST", "/secrets/usr", bytes.NewBuffer(b))
 	response = httptest.NewRecorder()
 	UsrHandler(response, request)
-	if response.Code != 200 {
-		t.Errorf("Expected status: %v, got: %v\n", 200, response.Code)
-	}
+	checkCode(t, response.Code, 200)
 
 	res, err = parseResponse(response)
 	if err != nil {
@@ -305,9 +286,7 @@ func testCoreUsr(t *testing.T, usrname string, sum string) {
 	request, _ = http.NewRequest("POST", "/secrets/usr", bytes.NewBuffer(b))
 	response = httptest.NewRecorder()
 	UsrHandler(response, request)
-	if response.Code != 200 {
-		t.Errorf("Expected status: %v, got: %v\n", 200, response.Code)
-	}
+	checkCode(t, response.Code, 200)
 
 	res, err = parseResponse(response)
 	if err != nil {
@@ -323,9 +302,7 @@ func testCoreUsr(t *testing.T, usrname string, sum string) {
 	request, _ = http.NewRequest("POST", "/secrets/usr", bytes.NewBuffer(b))
 	response = httptest.NewRecorder()
 	UsrHandler(response, request)
-	if response.Code != 200 {
-		t.Errorf("Expected status: %v, got: %v\n", 200, response.Code)
-	}
+	checkCode(t, response.Code, 200)
 
 	// Read back and validate all
 	body = Body{"r", usrname, sum, nil, "", ""}
@@ -333,9 +310,7 @@ func testCoreUsr(t *testing.T, usrname string, sum string) {
 	request, _ = http.NewRequest("POST", "/secrets/usr", bytes.NewBuffer(b))
 	response = httptest.NewRecorder()
 	UsrHandler(response, request)
-	if response.Code != 200 {
-		t.Errorf("Expected status: %v, got: %v\n", 200, response.Code)
-	}
+	checkCode(t, response.Code, 200)
 
 	res, err = parseResponse(response)
 	if err != nil {
@@ -354,9 +329,7 @@ func testCoreUsr(t *testing.T, usrname string, sum string) {
 	request, _ = http.NewRequest("POST", "/secrets/usr", bytes.NewBuffer(b))
 	response = httptest.NewRecorder()
 	UsrHandler(response, request)
-	if response.Code != 200 {
-		t.Errorf("Expected status: %v, got: %v\n", 200, response.Code)
-	}
+	checkCode(t, response.Code, 200)
 
 	// Read back and validate all
 	body = Body{"r", usrname, sum, nil, "", ""}
@@ -364,9 +337,7 @@ func testCoreUsr(t *testing.T, usrname string, sum string) {
 	request, _ = http.NewRequest("POST", "/secrets/usr", bytes.NewBuffer(b))
 	response = httptest.NewRecorder()
 	UsrHandler(response, request)
-	if response.Code != 200 {
-		t.Errorf("Expected status: %v, got: %v\n", 200, response.Code)
-	}
+	checkCode(t, response.Code, 200)
 
 	res, err = parseResponse(response)
 	if err != nil {
@@ -384,9 +355,7 @@ func testCoreUsr(t *testing.T, usrname string, sum string) {
 	request, _ = http.NewRequest("POST", "/secrets/usr", bytes.NewBuffer(b))
 	response = httptest.NewRecorder()
 	UsrHandler(response, request)
-	if response.Code != 200 {
-		t.Errorf("Expected status: %v, got: %v\n", 200, response.Code)
-	}
+	checkCode(t, response.Code, 200)
 
 	// Delete by tag + idx
 	body = Body{"d", usrname, sum, nil, tags[0], "4"}
@@ -394,9 +363,7 @@ func testCoreUsr(t *testing.T, usrname string, sum string) {
 	request, _ = http.NewRequest("POST", "/secrets/usr", bytes.NewBuffer(b))
 	response = httptest.NewRecorder()
 	UsrHandler(response, request)
-	if response.Code != 200 {
-		t.Errorf("Expected status: %v, got: %v\n", 200, response.Code)
-	}
+	checkCode(t, response.Code, 200)
 
 	// Read back and validate
 	body = Body{"r", usrname, sum, nil, "", ""}
@@ -404,9 +371,7 @@ func testCoreUsr(t *testing.T, usrname string, sum string) {
 	request, _ = http.NewRequest("POST", "/secrets/usr", bytes.NewBuffer(b))
 	response = httptest.NewRecorder()
 	UsrHandler(response, request)
-	if response.Code != 200 {
-		t.Errorf("Expected status: %v, got: %v\n", 200, response.Code)
-	}
+	checkCode(t, response.Code, 200)
 
 	res, err = parseResponse(response)
 	if err != nil {
@@ -422,9 +387,7 @@ func testCoreUsr(t *testing.T, usrname string, sum string) {
 	request, _ = http.NewRequest("POST", "/secrets/usr", bytes.NewBuffer(b))
 	response = httptest.NewRecorder()
 	UsrHandler(response, request)
-	if response.Code != 200 {
-		t.Errorf("Expected status: %v, got: %v\n", 200, response.Code)
-	}
+	checkCode(t, response.Code, 200)
 
 	// Read back and validate
 	body = Body{"r", usrname, sum, nil, "", ""}
@@ -432,9 +395,7 @@ func testCoreUsr(t *testing.T, usrname string, sum string) {
 	request, _ = http.NewRequest("POST", "/secrets/usr", bytes.NewBuffer(b))
 	response = httptest.NewRecorder()
 	UsrHandler(response, request)
-	if response.Code != 200 {
-		t.Errorf("Expected status: %v, got: %v\n", 200, response.Code)
-	}
+	checkCode(t, response.Code, 200)
 
 	res, err = parseResponse(response)
 	if err != nil {
@@ -446,7 +407,6 @@ func testCoreUsr(t *testing.T, usrname string, sum string) {
 
 func testNoPwd(t *testing.T) {
 	usrname := "___GO___TEST___USR___"
-	testCreateUsr(t, usrname, "")
 	testCoreUsr(t, usrname, "")
 
 	// Try and read with an unnecessary password
@@ -455,9 +415,8 @@ func testNoPwd(t *testing.T) {
 	request, _ := http.NewRequest("POST", "/secrets/usr", bytes.NewBuffer(b))
 	response := httptest.NewRecorder()
 	UsrHandler(response, request)
-	if response.Code != 200 {
-		t.Errorf("Expected status: %v, got: %v\n", 200, response.Code)
-	}
+	checkCode(t, response.Code, 200)
+
 	res, err := parseResponse(response)
 	if err != nil {
 		t.Error(err)
@@ -469,7 +428,6 @@ func testNoPwd(t *testing.T) {
 func testPwd(t *testing.T) {
 	usrname := "___GO___TEST___USR___"
 	sum := fmt.Sprintf("%v", rand.Uint64())
-	testCreateUsr(t, usrname, sum)
 	testCoreUsr(t, usrname, sum)
 
 	// Try and read with a wrong password
@@ -478,9 +436,7 @@ func testPwd(t *testing.T) {
 	request, _ := http.NewRequest("POST", "/secrets/usr", bytes.NewBuffer(b))
 	response := httptest.NewRecorder()
 	UsrHandler(response, request)
-	if response.Code != 401 {
-		t.Errorf("Expected status: %v, got: %v\n", 401, response.Code)
-	}
+	checkCode(t, response.Code, 401)
 
 	// Try and read without a password
 	body = Body{"r", usrname, "", nil, "", ""}
@@ -488,9 +444,125 @@ func testPwd(t *testing.T) {
 	request, _ = http.NewRequest("POST", "/secrets/usr", bytes.NewBuffer(b))
 	response = httptest.NewRecorder()
 	UsrHandler(response, request)
-	if response.Code != 401 {
-		t.Errorf("Expected status: %v, got: %v\n", 401, response.Code)
+	checkCode(t, response.Code, 401)
+}
+
+// Run the core tests with many users at once
+func testStressManyUsers(t *testing.T, numUsers int) {
+	// Generate random user info
+	users := make([]string, numUsers)
+	sums := make([]string, numUsers)
+	for i := 0; i < numUsers; i++ {
+		users[i] = fmt.Sprintf("___GO___TEST___USR___%v", i)
+		if rand.Int()%2 == 1 {
+			sums[i] = ""
+		} else {
+			sums[i] = fmt.Sprintf("%v", rand.Uint64())
+		}
 	}
+
+	var wg sync.WaitGroup
+	wg.Add(numUsers)
+	for i := 0; i < numUsers; i++ {
+		go func(userNum int) {
+			testCoreUsr(t, users[userNum], sums[userNum])
+			wg.Done()
+		}(i)
+	}
+	wg.Wait()
+}
+
+func testUsrWriteReadDeleteOne(t *testing.T, usrname string, sum string, enc [][]int32, tags []string) {
+	testCreateUsr(t, usrname, sum)
+	// Write secrets one at a time, 50% with a random tag
+	for _, e := range enc {
+		var tag string
+		if rand.Int()%2 == 1 {
+			tag = ""
+		} else {
+			tag = tags[rand.Int()%len(tags)]
+		}
+
+		body := Body{"w", usrname, sum, e, tag, ""}
+		b, _ := json.Marshal(body)
+		request, _ := http.NewRequest("POST", "/secrets/usr", bytes.NewBuffer(b))
+		response := httptest.NewRecorder()
+		UsrHandler(response, request)
+		checkCode(t, response.Code, 200)
+	}
+
+	numSecrets := 1 // Just some num > 0
+	// While response len > 0, delete a secret at a random idx/tag and read them all back
+	for numSecrets > 0 {
+		var tag string
+		if rand.Int()%2 == 1 {
+			tag = ""
+		} else {
+			tag = tags[rand.Int()%len(tags)]
+		}
+
+		body := Body{"d", usrname, sum, nil, tag, fmt.Sprintf("%v", (rand.Int() % numSecrets))}
+		b, _ := json.Marshal(body)
+		request, _ := http.NewRequest("POST", "/secrets/usr", bytes.NewBuffer(b))
+		response := httptest.NewRecorder()
+		UsrHandler(response, request)
+		checkCode(t, response.Code, 200)
+
+		body = Body{"r", usrname, sum, nil, "", ""}
+		b, _ = json.Marshal(body)
+		request, _ = http.NewRequest("POST", "/secrets/usr", bytes.NewBuffer(b))
+		response = httptest.NewRecorder()
+		UsrHandler(response, request)
+		checkCode(t, response.Code, 200)
+
+		res, err := parseResponse(response)
+		if err != nil {
+			t.Error(err)
+		}
+		numSecrets = len(res.Res)
+	}
+}
+
+func testStressManySecrets(t *testing.T, numUsers int, numSecrets int) {
+	// Generate random user info
+	users := make([]string, numUsers)
+	sums := make([]string, numUsers)
+	for i := 0; i < numUsers; i++ {
+		users[i] = fmt.Sprintf("___GO___TEST___USR___%v", i)
+		if rand.Int()%2 == 1 {
+			sums[i] = ""
+		} else {
+			sums[i] = fmt.Sprintf("%v", rand.Uint64())
+		}
+	}
+
+	// For each user generate random secrets
+	enc := make([][][]int32, numUsers)
+	for i := 0; i < numUsers; i++ {
+		enc[i] = make([][]int32, numSecrets)
+		for j := 0; j < numSecrets; j++ {
+			len := (rand.Int() % 63) + 1
+			enc[i][j] = make([]int32, len)
+			for k := 0; k < len; k++ {
+				enc[i][j][k] = int32(rand.Uint32() % 255)
+			}
+		}
+	}
+
+	tags := make([]string, numSecrets)
+	for i := 0; i < numSecrets; i++ {
+		tags[i] = fmt.Sprintf("tag%v", i)
+	}
+
+	var wg sync.WaitGroup
+	wg.Add(numUsers)
+	for i := 0; i < numUsers; i++ {
+		go func(userNum int) {
+			testUsrWriteReadDeleteOne(t, users[userNum], sums[userNum], enc[userNum], tags)
+			wg.Done()
+		}(i)
+	}
+	wg.Wait()
 }
 
 func TestUsrHandler(t *testing.T) {
@@ -508,6 +580,24 @@ func TestUsrHandler(t *testing.T) {
 	}()
 	collection = client.Database("secrets").Collection("users")
 
+	start := time.Now()
+
+	fmt.Println("Running testNoPwd")
 	testNoPwd(t)
+	fmt.Printf("Finished testNoPwd in %v seconds\n\n", time.Since(start))
+	start = time.Now()
+
+	fmt.Println("Running testPwd")
 	testPwd(t)
+	fmt.Printf("Finished testPwd in %v seconds\n\n", time.Since(start))
+	start = time.Now()
+
+	fmt.Println("Running testStressManyUsers")
+	testStressManyUsers(t, 100)
+	fmt.Printf("Finished testStressManyUsers in %v seconds\n\n", time.Since(start))
+	start = time.Now()
+
+	fmt.Println("Running testStressManySecrets")
+	testStressManySecrets(t, 3, 200)
+	fmt.Printf("Finished testStressManySecrets in %v seconds\n\n", time.Since(start))
 }
