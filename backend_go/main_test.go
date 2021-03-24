@@ -8,6 +8,7 @@ import (
 	"math/rand"
 	"net/http"
 	"net/http/httptest"
+	"os"
 	"sync"
 	"testing"
 	"time"
@@ -566,6 +567,12 @@ func testStressManySecrets(t *testing.T, numUsers int, numSecrets int) {
 }
 
 func TestUsrHandler(t *testing.T) {
+	args := os.Args
+	if len(args) < 3 {
+		panic("Missing argument: db authentication file")
+	}
+	uri := GetUri(args[2])
+
 	// Set up a DB connection
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
