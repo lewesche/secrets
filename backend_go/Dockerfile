@@ -12,5 +12,5 @@ RUN go get ./...
 #deploys on port 8000
 EXPOSE 8000
 
-CMD ["go", "run", "."]
+CMD ["go", "run", ".", "auth.txt"]
 
