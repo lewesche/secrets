@@ -1,3 +1,6 @@
+import image from "../assets/secrets_diagram_crop.png";
+
+
 // Sets up the little about section
 export const  init = () => {
     let about = document.getElementById('about');
@@ -26,12 +29,11 @@ export const  init = () => {
     inner.append(p4);   
 
     let diagram = document.createElement("img");
-    diagram.src="../img/secrets_diagram_crop.png";
+    diagram.src=image
     diagram.width = "950";
     inner.append(diagram);
 
-
-        about.append(inner);
+	about.append(inner);
 
     $(".dropDown").click(function(){
         let curr = this.innerHTML;

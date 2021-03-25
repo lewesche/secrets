@@ -1,6 +1,6 @@
 FROM rust
 
-# sudo docker run --name secrets --rm -it -p 8080:8080 <imageID>
+# sudo docker run --name secrets_frontend --rm -d -p 8080:8080 <imageID>
 
 RUN mkdir /app
 WORKDIR /app

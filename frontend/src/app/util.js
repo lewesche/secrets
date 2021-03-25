@@ -61,12 +61,14 @@ function parse_response(body, res) {
             setNotify("New user " + body.usr + " created")
         } else {
             clear_fields()
-                query("r");
+		body.action = "r"
+		body.tag = ""
+		body.idx = ""
+		send(body)
         }
     } catch (e) {
-        setError("Bad json")
+        setError(e)
     }
-
 }
 
 
@@ -94,7 +96,7 @@ function setTable(obj, decode) {
     rust.then(m => {
         let html_txt = "<table>";
         html_txt += "<tr>" + "<th>idx</th>" + "<th>tag</th>" + "<th>text</th>" + "</tr>";
-        for(i=0; i<obj.length; i++) {
+        for(let i=0; i<obj.length; i++) {
                 html_txt += "<tr>"
             html_txt += "<td>" + i + "</td>";
             html_txt += "<td>";
